@@ -64,7 +64,7 @@ export default defineConfig({
         // (much smaller) game code. three's examples (loaders) stay with the lazy chunks
         // that use them.
         advancedChunks: {
-          groups: [{ name: 'vendor', test: /node_modules[\/](three[\/](?!examples)|(react|react-dom|scheduler|@react-three|zustand|its-fine|suspend-react)[\/])/ }],
+          groups: [{ name: 'vendor', test: /node_modules[\\/](three[\\/](?!examples)|(react|react-dom|scheduler|@react-three|zustand|its-fine|suspend-react)[\\/])/ }],
         },
       },
     },
