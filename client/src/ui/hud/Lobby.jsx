@@ -1,0 +1,258 @@
+import { useEffect, useRef, useState } from 'react'
+
+import { BOT_LEVEL_IDS, BOT_LEVELS, CASES, MODES, MODE_IDS } from '@shared/balance'
+import { MAP_IDS, MAPS } from '@shared/maps'
+import { dailyStatus } from '@shared/logic'
+
+import { exitPointerLock } from '../../game/input'
+import { runtime } from '../../game/runtime'
+import { actions } from '../../net/actions'
+import { switchLobby } from '../../net/connection'
+import { useGame } from '../../store/game'
+import { formatCash, u, useCountUp, useNow } from '../format'
+import { Button, Fancy } from '../kit'
+
+/** The lobby HUD: the vote, server fill, the menu, wallet and case prompt, the welcome gift. */
+
+/** How full this server is (rounds always fill up to 8 with bots). */
+export function PlayerCount() {
+  const net = useGame((s) => s.net)
+  let text = 'OFFLINE - PLAYING WITH BOTS'
+  if (net.mode === 'online') text = net.isPrivate ? `PRIVATE ROOM ${net.code || ''} · ${net.players}/${net.maxPlayers} PLAYERS` : `${net.players}/${net.maxPlayers} PLAYERS IN THIS SERVER`
+  return (
+    <div className="flex items-center" style={{ gap: u(10) }}>
+      <span className="txt-o" style={{ fontSize: u(14), color: '#bfe8ff' }}>
+        {text} · 8 FIGHT EVERY ROUND
+      </span>
+      {net.mode === 'online' && net.isPrivate && (
+        <Button className="pointer-events-auto" color="#3a6fd8" style={{ padding: `${u(2)} ${u(10)}`, fontSize: u(13) }} onClick={() => switchLobby({ mode: 'public' })}>
+          PUBLIC SERVER
+        </Button>
+      )}
+    </div>
+  )
+}
+
+/**
+ * The lobby vote, decided by everyone in the room, in two steps: first the mode (and
+ * whether to play with bots, and how hard), then - with the chosen mode shown - the map.
+ * Each step ends when its time is up or as soon as everyone has voted; once the map is
+ * picked the round starts.
+ */
+export function VoteCards({ phase }) {
+  const now = useNow(250)
+  const label = (n) => `${n || 0} VOTE${n === 1 ? '' : 'S'}`
+  const modeStep = phase.voteStage !== 'map'
+  const stageLeft = Math.max(0, (phase.stageEndsAt || 0) - now)
+  const step = (n, text) => (
+    <div className="flex items-center" style={{ gap: u(10) }}>
+      <span className="chip" style={{ fontSize: u(13), color: '#ffd23b' }}>
+        STEP {n}/2
+      </span>
+      <Fancy size={22} from="#ffffff" to="#c9b8ff">
+        {text}
+      </Fancy>
+      {phase.phase === 'intermission' && (
+        <span className="chip" style={{ fontSize: u(15), color: '#ffd23b' }}>
+          {Math.ceil(stageLeft / 1000)}s
+        </span>
+      )}
+    </div>
+  )
+
+  if (modeStep) {
+    return (
+      <div className="vote-panel pointer-events-auto mc-panel flex flex-col items-center" style={{ gap: u(10), marginTop: u(4), padding: `${u(10)} ${u(12)} ${u(12)}` }}>
+        {step(1, 'PICK THE MODE')}
+        <div className="flex" style={{ gap: u(8) }}>
+          {MODE_IDS.map((id, i) => {
+            const m = MODES[id]
+            const mine = phase.myVote === id
+            return (
+              <button
+                key={id}
+                type="button"
+                className={`mc-btn vote-card flex flex-col items-center text-center ${mine ? 'picked' : ''}`}
+                style={{ '--c': m.color, '--i': i, width: u(150), padding: `${u(8)} ${u(8)}` }}
+                onClick={() => actions.vote(id)}
+              >
+                <span className="txt-o" style={{ fontSize: u(19), fontWeight: 700 }}>
+                  {m.name}
+                </span>
+                <span className="txt-o" style={{ fontSize: u(12), lineHeight: 1.2, minHeight: u(56), opacity: 0.95, fontWeight: 500 }}>
+                  {m.blurb}
+                </span>
+                <span key={phase.votes?.[id] || 0} className="vote-count bump">
+                  {label(phase.votes?.[id])}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+        <div className="flex items-center" style={{ gap: u(8) }}>
+          <span className="txt-o" style={{ fontSize: u(16), color: '#d9ccff', fontWeight: 700 }}>
+            BOTS
+          </span>
+          {BOT_LEVEL_IDS.map((id) => {
+            const lv = BOT_LEVELS[id]
+            const mine = phase.myBotVote === id
+            return (
+              <button
+                key={id}
+                type="button"
+                className={`mc-btn txt-o ${mine ? 'picked' : ''}`}
+                style={{ '--c': mine ? lv.color : '#4b5468', padding: `${u(4)} ${u(14)}`, fontSize: u(15) }}
+                onClick={() => actions.voteBots(id)}
+              >
+                {lv.name} · {phase.botVotes?.[id] || 0}
+              </button>
+            )
+          })}
+        </div>
+        <span className="txt-o" style={{ fontSize: u(13), color: '#bdb3e0', fontWeight: 500 }}>
+          Most votes wins - then everyone picks the map, and the round begins
+        </span>
+      </div>
+    )
+  }
+
+  const chosen = MODES[phase.chosenMode]
+  return (
+    <div className="vote-panel pointer-events-auto mc-panel flex flex-col items-center" style={{ gap: u(10), marginTop: u(4), padding: `${u(10)} ${u(12)} ${u(12)}` }}>
+      {chosen && (
+        <div className="flex items-center" style={{ gap: u(10) }}>
+          <span className="txt-o" style={{ fontSize: u(13), color: '#bdb3e0' }}>
+            MODE
+          </span>
+          <span className="chip" style={{ fontSize: u(18), background: chosen.color, color: '#fff', fontWeight: 700 }}>
+            {chosen.name}
+          </span>
+          {phase.chosenBots && (
+            <span className="chip" style={{ fontSize: u(14), color: BOT_LEVELS[phase.chosenBots]?.color }}>
+              {phase.chosenBots === 'off' ? 'NO BOTS' : `${BOT_LEVELS[phase.chosenBots]?.name} bots`}
+            </span>
+          )}
+        </div>
+      )}
+      {step(2, 'PICK THE MAP')}
+      <div className="flex" style={{ gap: u(10) }}>
+        {(phase.mapOptions || MAP_IDS.slice(0, 3)).map((id, i) => {
+          const mine = phase.myMapVote === id
+          return (
+            <button
+              key={id}
+              type="button"
+              className={`mc-btn vote-card flex flex-col items-center text-center ${mine ? 'picked' : ''}`}
+              style={{ '--c': mine ? '#e0a21b' : '#4b5468', '--i': i, width: u(196), padding: u(6), gap: u(4) }}
+              onClick={() => actions.voteMap(id)}
+            >
+              <img src={`${import.meta.env.BASE_URL}maps/${id}.webp`} alt={MAPS[id].name} draggable={false} style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: u(10) }} />
+              <span className="txt-o" style={{ fontSize: u(17), fontWeight: 700, lineHeight: 1.1 }}>
+                {MAPS[id].name}
+              </span>
+              <span key={phase.mapVotes?.[id] || 0} className="vote-count bump">
+                {label(phase.mapVotes?.[id])}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function MenuButton({ label, color, badge, onClick }) {
+  return (
+    <Button color={color} className="relative" style={{ width: u(150), padding: `${u(9)} 0`, fontSize: u(17), fontWeight: 700 }} onClick={onClick}>
+      {label}
+      {badge && (
+        <span className="absolute flex items-center justify-center rounded-full bg-red-600" style={{ right: u(-10), top: u(-10), width: u(24), height: u(24), fontSize: u(15), border: `${u(3)} solid #0d0a18` }}>
+          !
+        </span>
+      )}
+    </Button>
+  )
+}
+
+export function LobbyMenu() {
+  const open = useGame((s) => s.openPanel)
+  const profile = useGame((s) => s.profile)
+  const afk = useGame((s) => s.phase.afk)
+  const [openedAt] = useState(() => Date.now())
+  const dailyReady = dailyStatus(profile, openedAt).ready
+  const go = (panel, data) => {
+    exitPointerLock()
+    open(panel, data)
+  }
+  return (
+    <div className="lobby-menu pointer-events-auto absolute" style={{ left: u(14), gap: u(12) }}>
+      <MenuButton label="SHOP" color="#e0a21b" onClick={() => go('shop')} />
+      <MenuButton label="CASES" color="#c25cff" onClick={() => go('cases', { caseId: 'cape' })} />
+      <MenuButton label="BACKPACK" color="#b0633a" onClick={() => go('backpack')} />
+      <MenuButton label="DAILY" color="#3fa2ff" badge={dailyReady} onClick={() => go('daily')} />
+      <MenuButton label="QUESTS" color="#e0702b" onClick={() => go('quests')} />
+      <MenuButton label="TOP" color="#2bb3a3" onClick={() => go('leaderboards')} />
+      <MenuButton label="BOTS ONLY" color="#7a5cd8" onClick={() => go('bots')} />
+      <MenuButton label={afk ? 'AFK: ON' : 'AFK: OFF'} color={afk ? '#d8443a' : '#4b5563'} onClick={() => actions.afk(!afk)} />
+    </div>
+  )
+}
+
+export function Wallet() {
+  const wins = useGame((s) => s.profile.wins)
+  const cash = useGame((s) => s.profile.cash)
+  const shown = useCountUp(cash)
+  return (
+    <div className="slide-in-up absolute flex flex-col" style={{ left: u(14), bottom: u(14), gap: u(6) }}>
+      <div className="txt-o" style={{ fontSize: u(28), fontWeight: 700, color: '#ffd23b' }}>
+        👑 {wins}
+      </div>
+      <div key={cash} className="txt-o bump" style={{ fontSize: u(30), fontWeight: 700, color: '#7cff6b', transformOrigin: 'left center' }}>
+        {formatCash(shown)}
+      </div>
+    </div>
+  )
+}
+
+export function StationPrompt() {
+  const prompt = useGame((s) => s.prompt)
+  const open = useGame((s) => s.openPanel)
+  if (!prompt?.startsWith('case:')) return null
+  const caseId = prompt.slice(5)
+  const c = CASES[caseId]
+  return (
+    <div className="absolute left-1/2 -translate-x-1/2" style={{ bottom: u(120) }}>
+      <Button
+        className="pointer-events-auto bob"
+        color={c.color}
+        style={{ padding: `${u(10)} ${u(26)}`, fontSize: u(24), fontWeight: 700 }}
+        onClick={() => {
+          exitPointerLock()
+          open('cases', { caseId })
+        }}
+      >
+        {runtime.input.touch ? 'OPEN' : '[E]'} {c.name.toUpperCase()} · ${c.price}
+      </Button>
+    </div>
+  )
+}
+
+/** First visit: a free Cape Case, opened right away. */
+export function WelcomeGift() {
+  const loaded = useGame((s) => s.profileLoaded)
+  const given = useGame((s) => s.profile.welcomeGift)
+  const phase = useGame((s) => s.phase)
+  const now = useNow(1000)
+  const asked = useRef(false)
+  // Not with a round about to start: the reel would be cut short.
+  const calm = phase.phase === 'waiting' || (phase.phase === 'intermission' && phase.endsAt - now > 12_000)
+  useEffect(() => {
+    if (!loaded || given || asked.current || !calm) return undefined
+    const id = setTimeout(() => {
+      asked.current = true
+      actions.welcomeGift()
+    }, 2500)
+    return () => clearTimeout(id)
+  }, [loaded, given, calm])
+  return null
+}

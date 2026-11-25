@@ -1,10 +1,9 @@
-import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect } from 'react'
-import { Vector3 } from 'three'
 
-import { ATTACK_COOLDOWN_MS, breakSeconds, EFFECTS, ITEMS, lavaHeight, MELEE_REACH, REACH } from '@shared/balance'
-import { cellOverlapsBody, PLAYER, stepBody } from '@shared/physics'
-import { B, BLOCKS, blockKey, raycastVoxels, rayBox } from '@shared/voxel'
+import { useFrame, useThree } from '@react-three/fiber'
+import { ATTACK_COOLDOWN_MS, breakSeconds, EFFECTS, ITEMS, lavaHeight } from '@shared/balance'
+import { PLAYER, stepBody } from '@shared/physics'
+import { B, BLOCKS, blockKey } from '@shared/voxel'
 
 import { materialOf, sfx } from '../audio/sfx'
 import { send } from '../net/actions'
@@ -14,6 +13,8 @@ import { blockOfItem } from './art/items'
 import { installInput, wantsSprint } from './input'
 import { pushFx, runtime } from './runtime'
 import { lobbyLayout, setBlock, worldState } from './world'
+import { BOW_FULL_MS, placeCamera } from './player/camera'
+import { aim, findPlacement, heldId } from './player/aim'
 
 /**
  * You: movement against the voxel world (the same physics as the bots on the server),
@@ -25,18 +26,10 @@ import { lobbyLayout, setBlock, worldState } from './world'
  */
 
 const PLACE_REPEAT_MS = 210
+
 const SWING_SEND_MS = 300
+
 const THROW_REPEAT_MS = 300
-const BOW_FULL_MS = 900
-
-const camTarget = new Vector3()
-const camPos = new Vector3()
-const lookDir = new Vector3()
-
-function heldId() {
-  const slot = runtime.me.inv?.[runtime.me.sel]
-  return slot ? slot.id : 'fist'
-}
 
 function effect(name) {
   const left = runtime.me.effects?.[name]
@@ -180,121 +173,8 @@ export default function Player() {
 function useStateRef() {
   return stateBag
 }
+
 const stateBag = { attackWas: false, useWas: false, placeAt: 0, swingSentAt: 0, throwAt: 0, digSoundAt: 0, digCooldownUntil: 0 }
-
-function aim(world, ex, ey, ez, dx, dy, dz, target) {
-  const hit = raycastVoxels(world, ex, ey, ez, dx, dy, dz, REACH, (id) => id !== B.AIR)
-  let best = hit ? hit.dist : Infinity
-  if (hit) {
-    target.kind = 'block'
-    target.x = hit.x
-    target.y = hit.y
-    target.z = hit.z
-    target.nx = hit.nx
-    target.ny = hit.ny
-    target.nz = hit.nz
-    target.id = hit.id
-    target.dist = hit.dist
-  }
-  for (const r of runtime.remotes.values()) {
-    // Teammates aren't targets: your swing goes through to the block behind them.
-    if (runtime.teamSize > 1 && r.team === runtime.myTeam) continue
-    const t = rayBox(ex, ey, ez, dx, dy, dz, r.x - 0.35, r.y, r.z - 0.35, r.x + 0.35, r.y + PLAYER.height, r.z + 0.35)
-    if (t >= 0 && t <= MELEE_REACH + 0.2 && t < best) {
-      best = t
-      target.kind = 'ent'
-      target.eid = r.eid
-      target.dist = t
-    }
-  }
-}
-
-/** Can a block go in cell (x, y, z) right now (free, touching a block, not in anyone)? */
-function placeable(world, b, x, y, z) {
-  if (!world.inBounds(x, y, z) || y < 1 || y >= world.sy - 1) return false
-  const here = world.get(x, y, z)
-  if (here !== B.AIR && BLOCKS[here].render !== 'cross') return false
-  const touching =
-    world.isSolid(x + 1, y, z) || world.isSolid(x - 1, y, z) || world.isSolid(x, y + 1, z) || world.isSolid(x, y - 1, z) || world.isSolid(x, y, z + 1) || world.isSolid(x, y, z - 1)
-  if (!touching) return false
-  if (cellOverlapsBody(x, y, z, b.x, b.y, b.z, PLAYER.halfW - 0.02, PLAYER.height - 0.02)) return false
-  for (const r of runtime.remotes.values()) if (cellOverlapsBody(x, y, z, r.x, r.y, r.z, 0.28, 1.75)) return false
-  return true
-}
-
-/**
- * Where a block would go if you placed one now (`runtime.place`, also drawn as the
- * white preview box): against the face you're aiming at, as usual - or, when you aim
- * past an edge at nothing (over the lava), the free cell in the row under your feet
- * that is closest to where you're looking. That second rule is what makes bridging
- * easy: look ahead and down past the edge, click, walk on, click.
- */
-function findPlacement(world, b, eyeY, dx, dy, dz) {
-  const pl = runtime.place
-  pl.ok = false
-  const kind = ITEMS[heldId()]?.kind
-  if (kind !== 'block' && kind !== 'tnt') return
-  const t = runtime.target
-  const fy = Math.floor(b.y - 0.01) - 1
-  if (t.kind === 'ent') return
-  if (t.kind === 'block') {
-    const x = t.x + t.nx
-    const y = t.y + t.ny
-    const z = t.z + t.nz
-    const ok = placeable(world, b, x, y, z)
-    // Aiming at a wall or a block above the floor: the face rule, as always.
-    if (t.ny !== 1 || t.y > fy) {
-      if (ok) {
-        pl.x = x
-        pl.y = y
-        pl.z = z
-        pl.ok = true
-      }
-      return
-    }
-    // Aiming down at the floor near an edge: extending the bridge beats stacking a
-    // block on the floor in front of you - but stack if there's no edge to extend.
-    bridgeRow(world, b, eyeY, dx, dy, dz, fy)
-    if (!pl.ok && ok) {
-      pl.x = x
-      pl.y = y
-      pl.z = z
-      pl.ok = true
-    }
-    return
-  }
-  bridgeRow(world, b, eyeY, dx, dy, dz, fy)
-}
-
-/** The free, buildable cell in the row under your feet closest to your aim (see above). */
-function bridgeRow(world, b, eyeY, dx, dy, dz, fy) {
-  const pl = runtime.place
-  const bx = Math.floor(b.x)
-  const bz = Math.floor(b.z)
-  let best = 0.82
-  for (let ox = -3; ox <= 3; ox += 1) {
-    for (let oz = -3; oz <= 3; oz += 1) {
-      for (const y of [fy, fy + 1]) {
-        const x = bx + ox
-        const z = bz + oz
-        const cx = x + 0.5 - b.x
-        const cy = y + 0.5 - eyeY
-        const cz = z + 0.5 - b.z
-        const d = Math.hypot(cx, cy, cz)
-        if (d > REACH + 0.5 || d < 0.01) continue
-        const cos = (cx * dx + cy * dy + cz * dz) / d
-        // The raised row only counts when it's what you're looking straight at.
-        if (cos <= best || (y > fy && cos < 0.95)) continue
-        if (!placeable(world, b, x, y, z)) continue
-        best = cos
-        pl.x = x
-        pl.y = y
-        pl.z = z
-        pl.ok = true
-      }
-    }
-  }
-}
 
 function act(st, world, now, dt, b, eyeY, dx, dy, dz) {
   const input = runtime.input
@@ -396,71 +276,4 @@ function act(st, world, now, dt, b, eyeY, dx, dy, dz) {
     }
   }
   if (!input.use && item.kind !== 'bow') runtime.bowPullAt = 0
-}
-
-function placeCamera(camera, game, b, eyeY, dt, now) {
-  const p = runtime.player
-  const cam = runtime.camera
-  const world = worldState.world
-  cam.shake = Math.max(0, cam.shake - dt * 2.2)
-  cam.hurtTilt = Math.max(0, cam.hurtTilt - dt * 4)
-  const shakeX = cam.shake ? (Math.random() - 0.5) * cam.shake * 0.3 : 0
-  const shakeY = cam.shake ? (Math.random() - 0.5) * cam.shake * 0.3 : 0
-
-  // `?debug` tooling: a fixed camera (`runtime.debugCam = { pos: [x,y,z], target: [x,y,z] }`).
-  if (runtime.debugCam) {
-    camera.position.set(...runtime.debugCam.pos)
-    camera.lookAt(...runtime.debugCam.target)
-    return
-  }
-
-  const fov = game.settings.fov + cam.fovKick * 8 + (runtime.bowPullAt ? -Math.min(1, (now - runtime.bowPullAt) / BOW_FULL_MS) * 10 : 0)
-  if (Math.abs(camera.fov - fov) > 0.05) {
-    camera.fov += (fov - camera.fov) * Math.min(1, dt * 10)
-    camera.updateProjectionMatrix()
-  }
-
-  if (runtime.zone === 'spec') {
-    // Follow someone still in the round.
-    let t = runtime.remotes.get(runtime.spectate.eid)
-    if (!t) {
-      t = runtime.remotes.values().next().value
-      runtime.spectate.eid = t?.eid || 0
-    }
-    if (t) {
-      camTarget.set(t.x, t.y + 1.5, t.z)
-      lookDir.set(Math.sin(p.yaw) * Math.cos(p.pitch), -Math.sin(p.pitch), Math.cos(p.yaw) * Math.cos(p.pitch))
-      camPos.copy(camTarget).addScaledVector(lookDir, 5.5)
-      const hit = raycastVoxels(world, camTarget.x, camTarget.y, camTarget.z, lookDir.x, lookDir.y, lookDir.z, 5.5, (id) => BLOCKS[id]?.render === 'solid')
-      if (hit) camPos.copy(camTarget).addScaledVector(lookDir, Math.max(0.6, hit.dist - 0.3))
-      if (runtime.snap) camera.position.copy(camPos)
-      else camera.position.lerp(camPos, Math.min(1, dt * 10))
-      camera.lookAt(camTarget)
-    } else {
-      // Nobody left to watch: hover over the middle.
-      camera.position.set(56, 50, 80)
-      camera.lookAt(56, 30, 56)
-    }
-    runtime.snap = false
-    return
-  }
-
-  const landT = (now - cam.landAt) / 260
-  const dip = landT >= 0 && landT < 1 ? Math.sin(landT * Math.PI) * (1 - landT) * cam.landAmp * 0.32 : 0
-  const bob = (p.grounded && cam.mode === 'first' ? Math.sin(p.walkPhase * 2) * Math.min(1, p.speed / 5) * 0.045 : 0) - dip
-  if (cam.mode === 'first' && runtime.zone !== 'lobby') {
-    camera.position.set(b.x + shakeX, eyeY + bob + shakeY, b.z)
-    camera.rotation.set(p.pitch, p.yaw, Math.sin(cam.hurtTilt * Math.PI) * 0.08)
-  } else {
-    // Third person: behind and a little above, pulled in when a wall is in the way.
-    camTarget.set(b.x, eyeY + 0.1, b.z)
-    lookDir.set(Math.sin(p.yaw) * Math.cos(p.pitch), -Math.sin(p.pitch), Math.cos(p.yaw) * Math.cos(p.pitch))
-    const want = runtime.zone === 'lobby' ? 6 : 4.2
-    const hit = raycastVoxels(world, camTarget.x, camTarget.y, camTarget.z, lookDir.x, lookDir.y, lookDir.z, want, (id) => BLOCKS[id]?.render === 'solid')
-    const d = hit ? Math.max(0.5, hit.dist - 0.25) : want
-    camPos.copy(camTarget).addScaledVector(lookDir, d)
-    camera.position.set(camPos.x + shakeX, camPos.y + shakeY - dip * 0.5, camPos.z)
-    camera.rotation.set(p.pitch, p.yaw, 0)
-  }
-  runtime.snap = false
 }
