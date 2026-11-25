@@ -41,7 +41,8 @@ test('a round reports how it went, anonymously, and the summary reads it', () =>
   assert.ok(!JSON.stringify(events).includes('Pat') && !JSON.stringify(events).includes('Quinn'))
 
   const s = summarize(events)
-  assert.equal(s.rounds.count, 1)
+  // Quinn walking out ends that round too (no real players left in it).
+  assert.equal(s.rounds.count, 2)
   assert.equal(s.players.rounds, 2)
   assert.equal(s.sessions.count, 2)
   assert.equal(s.sessions.avgRounds, 1)

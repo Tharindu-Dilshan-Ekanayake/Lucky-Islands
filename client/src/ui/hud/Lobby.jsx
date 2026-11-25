@@ -114,7 +114,7 @@ export function VoteCards({ phase }) {
           })}
         </div>
         <span className="txt-o" style={{ fontSize: u(13), color: '#bdb3e0', fontWeight: 500 }}>
-          {t('Most votes wins. Bots play at Medium. Then everyone picks the map, and the round begins')}
+          {t('Most votes wins. No bots unless you vote for them (they play at Medium). Then everyone picks the map')}
         </span>
       </div>
     )

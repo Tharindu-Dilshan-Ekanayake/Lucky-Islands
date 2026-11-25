@@ -281,7 +281,7 @@ test('the lobby votes on the mode first, then the map, and everyone holds a swor
   assert.equal(host.phase, 'cages')
   assert.equal(host.match.mapId, pick)
   assert.equal(host.match.mode, 'teams2')
-  assert.equal(host.aliveFighters().length, 8, 'empty islands filled with bots')
+  assert.equal(host.aliveFighters().length, 2, 'nobody voted for bots: none by default')
 })
 
 test('a no-bots round is just the people (and alone, bots join anyway)', () => {
@@ -327,6 +327,7 @@ test('team modes: teammates spawn side by side, can\'t hurt each other, and win 
     host.join('a', 'A')
     host.join('b', 'B')
     host.message('a', 'vote', { mode })
+    host.message('a', 'voteBots', { level: 'normal' })
     advance(ROUND.intermissionMs + ROUND.cagesMs + 300)
     const fighters = host.aliveFighters()
     const size = host.match.teamSize
@@ -375,4 +376,20 @@ test('bots play at the difficulty the lobby votes for', () => {
   assert.equal(host.match.botLevel, 'hard')
   const bots = host.aliveFighters().filter((e) => e.bot)
   assert.ok(bots.length === 7 && bots.every((b) => b.brain.skill >= 0.8))
+})
+
+test('once every real player is out, the bots stop and the round ends', () => {
+  const { host, until } = makeHost(23)
+  host.join('a', 'A')
+  host.join('b', 'B')
+  host.message('a', 'voteBots', { level: 'normal' })
+  assert.ok(until(() => host.phase === 'fight'))
+  assert.ok(host.aliveFighters().some((e) => e.bot), 'bots in the round')
+  // One is knocked out and watches; the other closes the game.
+  host.kill(host.entOf('a'), null, 'void')
+  assert.equal(host.phase, 'fight', 'someone real is still in')
+  host.message('a', 'lobby')
+  host.leave('b')
+  host.tick(0.05)
+  assert.equal(host.phase, 'ended', 'only bots left: over')
 })

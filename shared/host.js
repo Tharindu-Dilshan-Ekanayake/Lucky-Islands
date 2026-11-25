@@ -489,7 +489,8 @@ export class GameHost {
     // A no-bots round needs two people; alone, (Medium) bots join in.
     if (botLevel === 'off' && humans.length < 2) {
       botLevel = 'normal'
-      this.toZone('lobby', 'toast', { text: 'No-bots rounds need 2 players - bots join in!' })
+      // Only worth saying if someone actually asked for no bots.
+      if ([...this.members.values()].some((m) => m.botVote === 'off')) this.toZone('lobby', 'toast', { text: 'No-bots rounds need 2 players - bots join in!' })
     }
     this.lastMap = mapId
     const seed = Math.floor(this.random() * 2 ** 31)
@@ -724,10 +725,11 @@ export class GameHost {
     return { list, sizes }
   }
 
+  /** The bots the room voted for; with no votes, none (a lone player still gets bots). */
   pickBotLevel() {
     const counts = this.botVoteCounts()
     const best = Math.max(0, ...Object.values(counts))
-    if (!best) return 'normal'
+    if (!best) return 'off'
     const top = BOT_LEVEL_IDS.filter((id) => counts[id] === best)
     return top[Math.floor(this.random() * top.length)]
   }
@@ -788,9 +790,10 @@ export class GameHost {
     // One team (or one player) left - or everyone gone at once in the lava, when the
     // last one to fall wins.
     if (this.aliveTeams().size <= 1) this.endMatch(alive[0] || lastDead)
-    else if (!alive.some((e) => !e.bot) && ![...this.ents.values()].some((e) => !e.bot && (e.zone === 'spec' || e.zone === 'match'))) {
-      // Only bots left and nobody watching: no point playing it out.
-      alive.sort((a, b) => b.hp - a.hp)
+    else if (!alive.some((e) => !e.bot)) {
+      // Every real player is out: the bots don't play on by themselves. The healthiest
+      // bot takes the round and everyone heads back for the next one.
+      alive.sort((a, b) => b.hp - a.hp || b.kills - a.kills)
       this.endMatch(alive[0])
     }
   }
@@ -912,6 +915,12 @@ export class GameHost {
   tickFight(dt, now) {
     const m = this.match
     m.lavaY = lavaHeight(now - m.fightStart, m.mode)
+    // Real players can also leave a round without dying (back to the lobby, closing the
+    // page): once none are left in it, it's over.
+    if (!this.aliveFighters().some((e) => !e.bot)) {
+      this.checkWin()
+      if (this.phase !== 'fight') return
+    }
     for (const ent of this.ents.values()) {
       if (ent.zone !== 'match' || !ent.alive) continue
       if (ent.bot) thinkBot(this, ent, dt, now)

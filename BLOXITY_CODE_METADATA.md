@@ -9,8 +9,9 @@ A block-world battle royale on floating islands. Everyone starts in a glass cage
 their own island; when the cages open you break your Lucky Blocks for random items
 (swords, bows, potions, TNT, warp pearls, blocks - or an unlucky surprise), build a
 bridge to the middle island where the Mega Lucky Blocks are, and fight. The lava sea
-below rises through the round. Last one standing wins. Empty islands are filled with
-bots (unless the room votes for no bots), so a round has up to 8 fighters. Between
+below rises through the round. Last one standing wins. The room votes whether bots fill the empty islands (no votes:
+no bots; a lone player always gets bots), and once every real player is out the round
+ends. Between
 rounds the room votes in two steps: first the mode (Solo free-for-all, 4 Teams 2v2v2v2,
 3 Teams 3v3v2, 2 Teams 4v4, Max Luck, Lava Rush) with the bots (none / Easy / Normal /
 Hard), then the map: six of the twelve maps (Sunny Meadow, Frosty Peaks, Candy Clouds,
