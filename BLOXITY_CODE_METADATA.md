@@ -25,8 +25,7 @@ Progression: rounds give XP (playing, kills, lucky blocks, placement, wins); eve
 pays cash and every fifth a free case. Three daily quests per player pay cash and XP the
 moment they're done. Levels show on name tags. Quick chat (T or the chat button) sends
 one of ten fixed lines to everyone in your zone, so guests and offline players can talk
-too; Boxity chat bubbles still show over names. The UI is in English or Sinhala
-(Settings → Language).
+too; Boxity chat bubbles still show over names.
 
 The game runs in `shared/host.js` (rounds, rules, bots), the same code in the Colyseus
 room (`server/src/rooms/GameRoom.js`) and in the offline stand-in in the browser

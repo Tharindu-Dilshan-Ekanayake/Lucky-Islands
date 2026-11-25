@@ -7,7 +7,7 @@ import { useGame } from '../../store/game'
 import { QUALITY_LEVELS, useQuality } from '../../store/quality'
 import { u } from '../format'
 import { Button } from '../kit'
-import { LANGUAGES, t } from '../i18n'
+import { t } from '../i18n'
 
 /** Settings (graphics, sound, controls) and the bots-only private room. */
 
@@ -120,16 +120,6 @@ export function SettingsPanel() {
           {manual ? 'Your choice is saved on this device.' : 'Picked for your device. If the game slows down it lowers this by itself.'}
         </span>
       </div>
-      {row(
-        t('Language'),
-        <div className="flex" style={{ gap: u(6) }}>
-          {LANGUAGES.map((l) => (
-            <Button key={l.id} color={settings.lang === l.id ? '#4a8f2c' : '#4b5563'} style={{ padding: `${u(4)} ${u(14)}`, fontSize: u(16) }} onClick={() => setSetting('lang', l.id)}>
-              {l.name}
-            </Button>
-          ))}
-        </div>,
-      )}
       {row(t('Mouse / touch sensitivity {n}', { n: settings.sensitivity.toFixed(1) }), slider('sensitivity', 0.3, 2.5, 0.1))}
       {row(t('Field of view {n}', { n: settings.fov }), slider('fov', 60, 100, 1))}
       {row(
