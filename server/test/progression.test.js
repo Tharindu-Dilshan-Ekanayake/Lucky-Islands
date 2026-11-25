@@ -59,7 +59,7 @@ test('old saves gain a level, XP and quests; junk is cleaned', () => {
   const p = normalizeProfile(old, 'x', 'Old')
   assert.equal(p.level, 1)
   assert.equal(p.xp, 0)
-  assert.deepEqual(p.quests, { day: -1, list: [] })
+  assert.deepEqual(p.quests, { day: -1, swaps: 0, list: [] })
   const junk = normalizeProfile({ ...createProfile('x', 'J'), level: -4, xp: 'lots', quests: { day: 3, list: [{ id: 'nope' }, { id: 'win1', progress: -2 }] } }, 'x', 'J')
   assert.equal(junk.level, 1)
   assert.equal(junk.xp, 0)

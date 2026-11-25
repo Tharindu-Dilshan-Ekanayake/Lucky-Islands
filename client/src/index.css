@@ -169,6 +169,12 @@ canvas {
   color: #fff;
   white-space: nowrap;
 }
+/* VIP names: gold. */
+.np-name.np-vip {
+  color: #ffd23b;
+  text-shadow: 0 0 calc(var(--u) * 6) rgba(255, 210, 59, 0.6);
+}
+
 /* The level badge beside a name. */
 .np-lvl {
   display: none;

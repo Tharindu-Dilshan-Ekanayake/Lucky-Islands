@@ -357,9 +357,11 @@ function placeLabel(label, c, camera, size, maxDist, now) {
     label.py = y
     label.el.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -100%)`
   }
-  if (label.text !== c.name) {
-    label.text = c.name
-    label.name.textContent = c.name
+  const shownName = c.vip ? `👑 ${c.name}` : c.name
+  if (label.text !== shownName) {
+    label.text = shownName
+    label.name.textContent = shownName
+    label.name.classList.toggle('np-vip', Boolean(c.vip))
   }
   const lvl = c.level ? String(c.level) : ''
   if (label.lvlText !== lvl) {
@@ -374,7 +376,7 @@ function placeLabel(label, c, camera, size, maxDist, now) {
     const t = team >= 0 ? TEAMS[team % TEAMS.length] : null
     label.name.style.background = t ? `${t.color}cc` : ''
     label.name.style.color = t ? '#0d0a18' : ''
-    label.name.textContent = team >= 0 && team === runtime.myTeam ? `▼ ${c.name}` : c.name
+    label.name.textContent = team >= 0 && team === runtime.myTeam ? `▼ ${shownName}` : shownName
   }
   const bubble = quickBubble(c.eid, now) || bubbleFor(null, c.name, now) || ''
   if (bubble !== label.bubbleText) {

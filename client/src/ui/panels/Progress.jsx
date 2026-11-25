@@ -1,9 +1,11 @@
 import { useState } from 'react'
 
-import { AD_REWARDS, DAILY_REWARDS, GEM_PRODUCTS, LEVEL_CASE_EVERY, levelCash, levelXp, QUESTS } from '@shared/balance'
+import { AD_REWARDS, CAPES, DAILY_REWARDS, GEM_GROUPS, GEM_PRODUCTS, LEVEL_CASE_EVERY, levelCash, levelXp, QUESTS, RARITIES, SWORD_SKINS } from '@shared/balance'
 import { dailyStatus } from '@shared/logic'
 
 import { buyGems, isRewardedAvailable, useGemsBalance, watchRewardedAd } from '../../bloxity/services'
+import { capePreview } from '../../game/art/capes'
+import { itemIcon } from '../../game/art/items'
 import { actions } from '../../net/actions'
 import { useGame } from '../../store/game'
 import { u } from '../format'
@@ -12,10 +14,27 @@ import { t } from '../i18n'
 
 /** Earning and showing off: the shop, the daily reward, level and quests, the leaderboards. */
 
+/** What a product shows: a picture for cosmetics, and whether you have it already. */
+function productState(p, profile, now) {
+  const g = p.grant
+  // A pack (cash and more) is never "owned"; a single exclusive is, once you have it.
+  const single = !g.cash
+  if (g.cape) return { owned: single && profile.capes.includes(g.cape), picture: capePreview(g.cape), tall: true, rarity: CAPES[g.cape]?.gemOnly ? CAPES[g.cape].rarity : null }
+  if (g.sword) return { owned: single && profile.swords.includes(g.sword), picture: itemIcon('diamond_sword', g.sword), rarity: SWORD_SKINS[g.sword]?.gemOnly ? SWORD_SKINS[g.sword].rarity : null }
+  if (g.pass) return { owned: Boolean(profile.passes[g.pass]) }
+  if (g.xpBoostMs) {
+    const left = (profile.boosts?.xpUntil || 0) - now
+    return { note: left > 0 ? `Active: ${Math.ceil(left / 60000)} min left` : null }
+  }
+  return {}
+}
+
 export function ShopPanel() {
   const gems = useGemsBalance()
   const [busy, setBusy] = useState(null)
   const show = useGame((s) => s.showToast)
+  const profile = useGame((s) => s.profile)
+  const [openedAt] = useState(() => Date.now())
   const adReady = isRewardedAvailable()
   return (
     <div className="flex flex-col" style={{ gap: u(10) }}>
@@ -24,30 +43,61 @@ export function ShopPanel() {
           Your Gems: {gems}
         </div>
       )}
-      <div className="grid" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${u(220)}, 1fr))`, gap: u(10) }}>
-        {Object.entries(GEM_PRODUCTS).map(([sku, p]) => (
-          <div key={sku} className="slot flex flex-col" style={{ padding: u(12), gap: u(6) }}>
-            <div className="txt-o" style={{ fontSize: u(22), fontWeight: 700, color: '#ffd23b' }}>
-              {p.name}
-            </div>
-            <div className="txt-o" style={{ fontSize: u(15), minHeight: u(36) }}>
-              {p.blurb}
-            </div>
-            <Button
-              color="#3a6fd8"
-              disabled={busy === sku}
-              style={{ padding: `${u(6)} 0`, fontSize: u(18) }}
-              onClick={async () => {
-                setBusy(sku)
-                const r = await buyGems(sku)
-                setBusy(null)
-                if (!r.success && r.error) show(r.error, 'error')
-              }}
-            >
-              BUY WITH GEMS
-            </Button>
+      {GEM_GROUPS.map(([group, title]) => (
+        <div key={group} className="flex flex-col" style={{ gap: u(8) }}>
+          <Fancy size={22} from="#ffffff" to={group === 'exclusive' ? '#ff9de2' : '#7fdcff'}>
+            {title}
+          </Fancy>
+          <div className="grid" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${u(200)}, 1fr))`, gap: u(10) }}>
+            {Object.entries(GEM_PRODUCTS)
+              .filter(([, p]) => p.group === group)
+              .map(([sku, p]) => {
+                const st = productState(p, profile, openedAt)
+                const rarityColor = st.rarity ? RARITIES[st.rarity]?.color : null
+                return (
+                  <div key={sku} className="slot flex flex-col" style={{ padding: u(12), gap: u(6), borderColor: rarityColor || undefined }}>
+                    {st.picture && (
+                      <img src={st.picture} alt="" className="pixelated self-center" style={{ height: u(64), width: st.tall ? u(40) : u(64) }} draggable={false} />
+                    )}
+                    <div className="txt-o" style={{ fontSize: u(20), fontWeight: 700, color: '#ffd23b' }}>
+                      {p.name}
+                    </div>
+                    {st.rarity && (
+                      <div className="txt-o" style={{ fontSize: u(13), color: rarityColor }}>
+                        ★ {RARITIES[st.rarity].name.toUpperCase()} · GEMS ONLY
+                      </div>
+                    )}
+                    <div className="txt-o" style={{ fontSize: u(14), minHeight: u(34) }}>
+                      {p.blurb}
+                    </div>
+                    {st.note && (
+                      <div className="txt-o" style={{ fontSize: u(13), color: '#7cf0ff' }}>
+                        {st.note}
+                      </div>
+                    )}
+                    <Button
+                      color={st.owned ? '#4b5563' : '#3a6fd8'}
+                      disabled={busy === sku || st.owned}
+                      style={{ padding: `${u(6)} 0`, fontSize: u(17) }}
+                      onClick={async () => {
+                        setBusy(sku)
+                        const r = await buyGems(sku)
+                        setBusy(null)
+                        if (!r.success && r.error) show(r.error, 'error')
+                      }}
+                    >
+                      {st.owned ? 'OWNED' : 'BUY WITH GEMS'}
+                    </Button>
+                  </div>
+                )
+              })}
           </div>
-        ))}
+        </div>
+      ))}
+      <Fancy size={22} from="#ffffff" to="#7cff6b">
+        FREE
+      </Fancy>
+      <div className="grid" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${u(200)}, 1fr))`, gap: u(10) }}>
         {Object.entries(AD_REWARDS).map(([placement, ad]) => (
           <div key={placement} className="slot flex flex-col" style={{ padding: u(12), gap: u(6) }}>
             <div className="txt-o" style={{ fontSize: u(22), fontWeight: 700, color: '#7cff6b' }}>

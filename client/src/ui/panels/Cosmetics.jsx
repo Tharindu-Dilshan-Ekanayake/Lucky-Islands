@@ -27,7 +27,7 @@ function CosmeticTile({ kind, id, rarity, chance, owned, equipped, onClick }) {
     >
       <img src={isCape ? capePreview(id) : itemIcon('diamond_sword', id)} alt="" className="pixelated" style={{ height: u(64), width: isCape ? u(40) : u(64) }} draggable={false} />
       <span className="txt-o text-center" style={{ fontSize: u(14), lineHeight: 1.1 }}>
-        {def?.name}
+        {def?.gemOnly ? `★ ${def.name}` : def?.name}
       </span>
       <span className="txt-o" style={{ fontSize: u(12), color: rarityColor(rarity) }}>
         {chance !== undefined ? `${(chance * 100).toFixed(chance < 0.01 ? 2 : 1)}%` : RARITIES[rarity]?.name}
@@ -40,18 +40,20 @@ function CosmeticTile({ kind, id, rarity, chance, owned, equipped, onClick }) {
 export function CasesPanel() {
   const data = useGame((s) => s.panelData)
   const cash = useGame((s) => s.profile.cash)
-  const [caseId, setCaseId] = useState(data?.caseId && CASES[data.caseId] ? data.caseId : 'cape')
+  const [caseId, setCaseId] = useState(data?.caseId && CASES[data.caseId] && !CASES[data.caseId].gems ? data.caseId : 'cape')
   const c = CASES[caseId]
   const pool = useMemo(() => casePool(caseId), [caseId])
   const afford = cash >= c.price
   return (
     <div className="flex flex-col" style={{ gap: u(12) }}>
       <div className="flex" style={{ gap: u(10) }}>
-        {Object.entries(CASES).map(([id, cs]) => (
+        {Object.entries(CASES)
+          .filter(([, cs]) => !cs.gems)
+          .map(([id, cs]) => (
           <Button key={id} color={id === caseId ? cs.color : '#4b5563'} style={{ padding: `${u(8)} ${u(16)}`, fontSize: u(20) }} onClick={() => setCaseId(id)}>
             {cs.name.toUpperCase()}
           </Button>
-        ))}
+          ))}
       </div>
       <div className="grid" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${u(110)}, 1fr))`, gap: u(8) }}>
         {pool.map((e) => (
@@ -233,7 +235,7 @@ export function BackpackPanel() {
         ))}
       </div>
       <div className="txt-o" style={{ fontSize: u(14), color: '#bdb3e0' }}>
-        Tap something you own to wear it. Get more from cases.
+        Tap something you own to wear it. Get more from cases; ★ items are Gem exclusives (Shop).
       </div>
     </div>
   )

@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 import { CAPES, levelXp, QUICK_CHAT, SWORD_SKINS, TEAMS } from '@shared/balance'
 
 import { exitPointerLock } from '../../game/input'
@@ -18,6 +20,9 @@ export function NameTag() {
   const wins = useGame((s) => s.profile.wins)
   const kills = useGame((s) => s.profile.kills)
   const level = useGame((s) => s.profile.level || 1)
+  const vip = useGame((s) => Boolean(s.profile.passes?.vip))
+  const xpUntil = useGame((s) => s.profile.boosts?.xpUntil || 0)
+  const [seenAt] = useState(() => Date.now())
   const xp = useGame((s) => s.profile.xp || 0)
   const need = levelXp(level)
   const name = identity?.displayName || identity?.username || profileName || 'Guest'
@@ -35,7 +40,7 @@ export function NameTag() {
       </div>
       <div className="flex flex-col" style={{ lineHeight: 1.1 }}>
         <span className="txt-o" style={{ fontSize: u(19), fontWeight: 700, maxWidth: u(220), overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {name}
+          {vip ? `👑 ${name}` : name}
         </span>
         <span className="txt-o" style={{ fontSize: u(14) }}>
           <span style={{ color: '#ffd23b' }}>👑 {wins}</span> <span style={{ color: '#ff8a8a', marginLeft: u(8) }}>⚔ {kills}</span>
@@ -44,6 +49,11 @@ export function NameTag() {
           <span className="np-lvl" style={{ display: 'inline-block', margin: 0 }}>
             {level}
           </span>
+          {xpUntil > seenAt && (
+            <span className="chip" style={{ fontSize: u(10), padding: `0 ${u(5)}`, color: '#7cf0ff' }}>
+              2x XP
+            </span>
+          )}
           <div style={{ width: u(110), height: u(8), borderRadius: u(4), background: 'rgba(0,0,0,0.45)', overflow: 'hidden' }}>
             <div key={level} className="xp-fill" style={{ width: `${Math.min(100, (xp / need) * 100)}%`, height: '100%', background: 'linear-gradient(90deg, #7cf0ff, #5f8bff)' }} />
           </div>

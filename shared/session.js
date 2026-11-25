@@ -38,7 +38,7 @@ export class PlayerSession {
   }
 
   look() {
-    return { cape: this.profile.cape, sword: this.profile.sword, level: this.profile.level }
+    return { cape: this.profile.cape, sword: this.profile.sword, level: this.profile.level, vip: Boolean(this.profile.passes.vip) }
   }
 
   /** Lobby actions from the client. Unknown types are ignored. */
@@ -107,10 +107,11 @@ export class PlayerSession {
     this.sendProfile()
   }
 
-  grantGemProduct(sku) {
-    const label = applyGemGrant(this.profile, sku)
-    if (!label) return { ok: false, error: `Unknown product ${sku}` }
-    this.emit('reward', { label })
+  grantGemProduct(sku, now = Date.now()) {
+    const grant = applyGemGrant(this.profile, sku, now, this.rand)
+    if (!grant) return { ok: false, error: `Unknown product ${sku}` }
+    if (grant.caseResult?.ok) this.emit('caseResult', { ...grant.caseResult, gift: true })
+    else this.emit('reward', { label: grant.label })
     this.onLook(this.look())
     this.sendProfile()
     return { ok: true }

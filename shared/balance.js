@@ -329,6 +329,10 @@ export const CAPES = {
   moon: { name: 'Blood Moon Cape', rarity: 'legendary', pattern: 'moon', colors: ['#2a0b12', '#ff3b3b'] },
   rainbow: { name: 'Rainbow Cape', rarity: 'legendary', pattern: 'rainbow', colors: [] },
   void: { name: 'Void Cape', rarity: 'mythic', pattern: 'void', colors: ['#050008', '#d14dff', '#5b1aa6'] },
+  // Gem exclusives: never in a cash case.
+  phoenix: { name: 'Phoenix Cape', rarity: 'legendary', pattern: 'flame', colors: ['#e6fbff', '#4fc3ff', '#1a4fd1'], gemOnly: true },
+  royal: { name: 'Royal Cape', rarity: 'legendary', pattern: 'moon', colors: ['#1a0f2e', '#ffd23b'], gemOnly: true },
+  aurora: { name: 'Aurora Cape', rarity: 'mythic', pattern: 'stars', colors: ['#062a2a', '#7affd1', '#3fd2ff'], gemOnly: true },
 }
 
 /** Sword skins recolour every sword you hold: blade, edge, guard, handle. */
@@ -344,12 +348,19 @@ export const SWORD_SKINS = {
   inferno: { name: 'Inferno', rarity: 'epic', colors: ['#ff6a1a', '#ffe14d', '#8a1405', '#3a0a05'] },
   prism: { name: 'Prism', rarity: 'legendary', colors: ['#ff63e6', '#7af7ff', '#7a3bff', '#ffffff'] },
   voidblade: { name: 'Voidblade', rarity: 'mythic', colors: ['#0d0014', '#e15cff', '#5b1aa6', '#e15cff'] },
+  // Gem exclusives: never in a cash case.
+  dragon: { name: 'Dragonfang', rarity: 'legendary', colors: ['#2bd96b', '#d9ffe6', '#0d5c2e', '#3a2a1a'], gemOnly: true },
+  obsidian: { name: 'Magma Obsidian', rarity: 'legendary', colors: ['#1c1626', '#ff5a2a', '#0a0612', '#ff5a2a'], gemOnly: true },
+  celestial: { name: 'Celestial', rarity: 'mythic', colors: ['#ffffff', '#ffe8a3', '#7ab8ff', '#ffd23b'], gemOnly: true },
 }
 
 /** Cases, bought with cash in the lobby. */
 export const CASES = {
   cape: { name: 'Cape Case', price: 400, kind: 'cape', color: '#ffb52e' },
   sword: { name: 'Sword Case', price: 600, kind: 'sword', color: '#3fa2ff' },
+  // Bought with Gems (GEM_PRODUCTS): Epic or better, guaranteed.
+  mythic_cape: { name: 'Mythic Cape Case', price: 0, kind: 'cape', color: '#ff4f6d', gems: true, minRarity: 'epic' },
+  mythic_sword: { name: 'Mythic Sword Case', price: 0, kind: 'sword', color: '#ff4f6d', gems: true, minRarity: 'epic' },
 }
 /** A duplicate gives this share of the case price back. */
 export const DUPLICATE_REFUND = 0.4
@@ -359,7 +370,8 @@ export function casePool(caseId) {
   const c = CASES[caseId]
   if (!c) return []
   const table = c.kind === 'cape' ? CAPES : SWORD_SKINS
-  const entries = Object.entries(table).filter(([, v]) => !v.owned)
+  const min = c.minRarity ? RARITY_ORDER.indexOf(c.minRarity) : 0
+  const entries = Object.entries(table).filter(([, v]) => !v.owned && !v.gemOnly && RARITY_ORDER.indexOf(v.rarity) >= min)
   const byRarity = {}
   for (const [id, v] of entries) (byRarity[v.rarity] ||= []).push(id)
   const present = RARITY_ORDER.filter((r) => byRarity[r])
@@ -393,11 +405,30 @@ export const DAILY_REWARDS = [100, 150, 200, 250, 300, 400, 600]
  * confirms a purchase (see server/src/gems.js).
  */
 export const GEM_PRODUCTS = {
-  cash_small: { name: 'Bag of Cash', blurb: '+1,500 cash', icon: 'cash', grant: { cash: 1500 } },
-  cash_big: { name: 'Vault of Cash', blurb: '+8,000 cash', icon: 'cash', grant: { cash: 8000 } },
-  vip: { name: 'VIP', blurb: 'x2 cash from every round, forever', icon: 'crown', grant: { pass: 'vip' } },
-  starter: { name: 'Starter Pack', blurb: 'Flame Cape + Inferno sword skin + 1,000 cash', icon: 'gift', grant: { cash: 1000, cape: 'flame', sword: 'inferno' } },
+  // Exclusives: only with Gems.
+  cape_aurora: { group: 'exclusive', name: 'Aurora Cape', blurb: 'Mythic. Only with Gems.', icon: 'cape', grant: { cape: 'aurora' } },
+  cape_phoenix: { group: 'exclusive', name: 'Phoenix Cape', blurb: 'Legendary blue fire. Only with Gems.', icon: 'cape', grant: { cape: 'phoenix' } },
+  cape_royal: { group: 'exclusive', name: 'Royal Cape', blurb: 'Legendary. Only with Gems.', icon: 'cape', grant: { cape: 'royal' } },
+  sword_celestial: { group: 'exclusive', name: 'Celestial Sword', blurb: 'Mythic skin for every sword. Only with Gems.', icon: 'sword', grant: { sword: 'celestial' } },
+  sword_dragon: { group: 'exclusive', name: 'Dragonfang Sword', blurb: 'Legendary skin. Only with Gems.', icon: 'sword', grant: { sword: 'dragon' } },
+  sword_obsidian: { group: 'exclusive', name: 'Magma Obsidian Sword', blurb: 'Legendary skin. Only with Gems.', icon: 'sword', grant: { sword: 'obsidian' } },
+  // Cases and boosts.
+  mythic_cape_case: { group: 'cases', name: 'Mythic Cape Case', blurb: 'Epic, Legendary or Mythic cape - guaranteed', icon: 'case', grant: { case: 'mythic_cape' } },
+  mythic_sword_case: { group: 'cases', name: 'Mythic Sword Case', blurb: 'Epic, Legendary or Mythic sword skin - guaranteed', icon: 'case', grant: { case: 'mythic_sword' } },
+  vip: { group: 'boosts', name: 'VIP', blurb: 'x2 cash from every round and a crown on your name, forever', icon: 'crown', grant: { pass: 'vip' } },
+  xp_pass: { group: 'boosts', name: 'XP Pass', blurb: '+50% XP from every round, forever', icon: 'star', grant: { pass: 'xp' } },
+  xp_boost: { group: 'boosts', name: 'XP Boost', blurb: 'Double XP for 1 hour', icon: 'star', grant: { xpBoostMs: 60 * 60 * 1000 } },
+  quest_refresh: { group: 'boosts', name: 'New Quests', blurb: "Swap today's quests for three new ones", icon: 'star', grant: { questRefresh: true } },
+  starter: { group: 'cash', name: 'Starter Pack', blurb: 'Flame Cape + Inferno sword skin + 1,000 cash', icon: 'gift', grant: { cash: 1000, cape: 'flame', sword: 'inferno' } },
+  cash_small: { group: 'cash', name: 'Bag of Cash', blurb: '+1,500 cash', icon: 'cash', grant: { cash: 1500 } },
+  cash_big: { group: 'cash', name: 'Vault of Cash', blurb: '+8,000 cash', icon: 'cash', grant: { cash: 8000 } },
 }
+export const GEM_GROUPS = [
+  ['exclusive', 'GEM EXCLUSIVES'],
+  ['cases', 'MYTHIC CASES'],
+  ['boosts', 'BOOSTS'],
+  ['cash', 'CASH'],
+]
 
 /** Rewarded ads: watch one, get this. */
 export const AD_REWARDS = {

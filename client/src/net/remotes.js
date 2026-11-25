@@ -97,6 +97,7 @@ function dress(r, entry) {
   r.lookKey = entry.look || ''
   r.team = entry.team ?? -1
   r.level = entry.level || 0
+  r.vip = Boolean(entry.vip)
 }
 
 /** Names, capes and skins from the roster. */

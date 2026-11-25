@@ -110,7 +110,7 @@ export class GameHost {
     const eid = this.nextEid++
     const member = { cid, eid, name, afk: false, vote: null, mapVote: null, botVote: null, joinedAt: this.now(), rounds: 0, tutorial: 0 }
     this.members.set(cid, member)
-    const ent = this.makeEnt(eid, name, { cid, cape: look.cape, sword: look.sword, level: look.level || 1 })
+    const ent = this.makeEnt(eid, name, { cid, cape: look.cape, sword: look.sword, level: look.level || 1, vip: Boolean(look.vip) })
     this.toLobby(ent, false)
     this.ents.set(eid, ent)
     this.sendTo(cid, 'hello', { eid })
@@ -148,6 +148,7 @@ export class GameHost {
     if (look.cape) ent.cape = look.cape
     if (look.sword) ent.sword = look.sword
     if (Number.isFinite(look.level)) ent.level = look.level
+    if (typeof look.vip === 'boolean') ent.vip = look.vip
     this.rosterDirty = true
   }
 
@@ -1534,6 +1535,7 @@ export class GameHost {
         cape: e.cape,
         sword: e.sword,
         level: e.level || 1,
+        vip: Boolean(e.vip),
         look: e.look || '',
         team: e.zone === 'lobby' ? -1 : e.team ?? -1,
         zone: e.zone,

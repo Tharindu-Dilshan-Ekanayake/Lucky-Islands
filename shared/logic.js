@@ -48,6 +48,8 @@ export function createProfile(id, name) {
     welcomeGift: false,
     level: 1,
     xp: 0,
+    /** Timed boosts: `{ xpUntil }` (ms timestamps). */
+    boosts: {},
     quests: { day: -1, list: [] },
     stats: { playtime: 0, bestKills: 0, cashEarned: 0, casesOpened: 0 },
     createdAt: Date.now(),
@@ -70,11 +72,13 @@ export function normalizeProfile(raw, id, name) {
   p.passes = raw.passes && typeof raw.passes === 'object' ? { ...raw.passes } : {}
   p.daily = { lastDay: isNum(raw.daily?.lastDay) ? raw.daily.lastDay : -1, streak: isNum(raw.daily?.streak) ? raw.daily.streak : 0 }
   p.adAt = raw.adAt && typeof raw.adAt === 'object' ? { ...raw.adAt } : {}
+  p.boosts = raw.boosts && typeof raw.boosts === 'object' && isNum(raw.boosts.xpUntil) ? { xpUntil: raw.boosts.xpUntil } : {}
   p.level = isNum(raw.level) ? Math.max(1, Math.floor(raw.level)) : 1
   p.xp = isNum(raw.xp) ? Math.max(0, Math.floor(raw.xp)) : 0
   const q = raw.quests
   p.quests = {
     day: isNum(q?.day) ? q.day : -1,
+    swaps: isNum(q?.swaps) ? q.swaps : 0,
     list: Array.isArray(q?.list)
       ? q.list.filter((e) => e && QUESTS[e.id]).map((e) => ({ id: e.id, progress: isNum(e.progress) ? Math.max(0, e.progress) : 0, done: Boolean(e.done) }))
       : [],
@@ -117,22 +121,28 @@ export function addXp(profile, xp, rng = Math.random) {
   return ups
 }
 
-/** Today's quests (picked from the day and your id, so they're the same on every device). */
-export function refreshQuests(profile, now) {
+/**
+ * Today's quests (picked from the day and your id, so they're the same on every device).
+ * `force` swaps them for a different three (the New Quests product).
+ */
+export function refreshQuests(profile, now, force = false) {
   const today = dayNumber(now)
-  if (profile.quests.day === today && profile.quests.list.length) return false
-  let h = today
+  if (!force && profile.quests.day === today && profile.quests.list.length) return false
+  const swaps = force ? (profile.quests.day === today ? profile.quests.swaps || 0 : 0) + 1 : 0
+  const old = force ? new Set(profile.quests.list.map((q) => q.id)) : new Set()
+  let h = today + swaps * 7919
   for (const ch of String(profile.id)) h = (h * 31 + ch.charCodeAt(0)) | 0
   const rng = mulberry32(h)
   const pool = [...QUEST_IDS]
   const list = []
   while (list.length < QUESTS_PER_DAY && pool.length) {
     const id = pool.splice(Math.floor(rng() * pool.length), 1)[0]
-    // One quest per kind of stat a day.
+    // One quest per kind of stat a day; a swap brings different ones where it can.
     if (list.some((q) => QUESTS[q.id].stat === QUESTS[id].stat)) continue
+    if (old.has(id) && pool.length > QUESTS_PER_DAY - list.length) continue
     list.push({ id, progress: 0, done: false })
   }
-  profile.quests = { day: today, list }
+  profile.quests = { day: today, list, swaps }
   return true
 }
 
@@ -181,6 +191,9 @@ export function applyRoundResult(profile, { kills = 0, placement = 99, win = fal
 
   let xp = XP.play + kills * XP.kill + Math.min(lucky, XP.maxLucky) * XP.lucky + (XP.placement[placement - 1] || 0)
   if (win) xp += XP.win
+  // XP Pass (+50%) and an active XP Boost (x2) stack.
+  const xpMul = (profile.passes.xp ? 1.5 : 1) * ((profile.boosts?.xpUntil || 0) > now ? 2 : 1)
+  xp = Math.round(xp * xpMul)
   const quests = progressQuests(profile, questStats({ kills, placement, win, lucky, placed }), now)
   const questXp = quests.reduce((s, q) => s + q.xp, 0)
   const levelUps = addXp(profile, xp + questXp, rng)
@@ -240,8 +253,11 @@ export function claimDaily(profile, now) {
   return { ok: true, cash: status.reward, streak: status.streak }
 }
 
-/** Applies a Gems product's grant. Returns a label for the toast. */
-export function applyGemGrant(profile, sku) {
+/**
+ * Applies a Gems product's grant. Returns `{ label, caseResult? }` (a case product opens
+ * its case at once), or null for an unknown product.
+ */
+export function applyGemGrant(profile, sku, now = Date.now(), rng = Math.random) {
   const product = GEM_PRODUCTS[sku]
   if (!product) return null
   const g = product.grant
@@ -249,7 +265,10 @@ export function applyGemGrant(profile, sku) {
   if (g.pass) profile.passes[g.pass] = true
   if (g.cape && !profile.capes.includes(g.cape)) profile.capes.push(g.cape)
   if (g.sword && !profile.swords.includes(g.sword)) profile.swords.push(g.sword)
-  return product.name
+  if (g.xpBoostMs) profile.boosts = { ...profile.boosts, xpUntil: Math.max(now, profile.boosts?.xpUntil || 0) + g.xpBoostMs }
+  if (g.questRefresh) refreshQuests(profile, now, true)
+  const caseResult = g.case ? openCase(profile, g.case, rng, true) : null
+  return { label: product.name, caseResult }
 }
 
 export function applyAdReward(profile, placement, now) {
