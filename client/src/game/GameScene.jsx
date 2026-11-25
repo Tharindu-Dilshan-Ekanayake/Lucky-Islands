@@ -91,8 +91,10 @@ export function GameScene({ onReady }) {
     idle(warmItemModels, 3000)
   }, [firstFrame, game, onReady])
 
-  const handleCreated = useCallback(({ gl }) => {
+  const handleCreated = useCallback(({ gl, scene }) => {
     performance.mark('pp:gl-created')
+    // `?debug` tooling: the scene, for counting what's in it.
+    if (window.__pp) window.__pp.scene = scene
     gl.debug.checkShaderErrors = import.meta.env.DEV
     const canvas = gl.domElement
     let remountTimer = null

@@ -731,8 +731,15 @@ export class GameHost {
     return { list, sizes }
   }
 
-  /** The bots the room voted for; with no votes, none (a lone player still gets bots). */
+  /**
+   * The bots the room voted for; with no votes, none. Alone in the room there are always
+   * bots: the level voted for, else Medium.
+   */
   pickBotLevel() {
+    if (this.eligibleMembers().length < 2) {
+      const mine = [...this.members.values()].map((m) => m.botVote).find((v) => v && v !== 'off')
+      return mine || 'normal'
+    }
     const counts = this.botVoteCounts()
     const best = Math.max(0, ...Object.values(counts))
     if (!best) return 'off'

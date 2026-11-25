@@ -189,7 +189,10 @@ function AvatarSlot({ id, equipped, proportions, capeId, local = false }) {
     const dist = Math.hypot(dx, dy, dz)
     const behind = dist > 3 && (dx * _dir.x + dy * _dir.y + dz * _dir.z) / dist < -0.2
     frame.current += 1
-    active.current = g.visible && !behind && (dist < 22 || frame.current % 2 === 0)
+    // Near: every frame. Further: every other frame. Far: every third (LOW poses fewer).
+    const q = getQuality()
+    const every = dist < q.avatarPoseFull ? 1 : dist < q.avatarPoseHalf ? 2 : 3
+    active.current = g.visible && !behind && frame.current % every === 0
     // Not posed this frame: three needn't walk its ~60 bones either (the pose and place
     // are exactly last frame's).
     g.matrixWorldAutoUpdate = active.current

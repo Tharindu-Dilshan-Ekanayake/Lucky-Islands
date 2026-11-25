@@ -78,10 +78,16 @@ export function VoteCards({ phase }) {
                 style={{ '--c': m.color, '--i': i, width: u(150), padding: `${u(8)} ${u(8)}` }}
                 onClick={() => actions.vote(id)}
               >
+                <img
+                  src={`${import.meta.env.BASE_URL}modes/${id}.webp`}
+                  alt=""
+                  draggable={false}
+                  style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: u(9), marginBottom: u(4), boxShadow: '0 2px 0 rgba(0,0,0,0.25)' }}
+                />
                 <span className="txt-o" style={{ fontSize: u(19), fontWeight: 700 }}>
                   {t(m.name)}
                 </span>
-                <span className="txt-o" style={{ fontSize: u(12), lineHeight: 1.2, minHeight: u(56), opacity: 0.95, fontWeight: 500 }}>
+                <span className="mode-blurb txt-o" style={{ fontSize: u(12), lineHeight: 1.2, minHeight: u(56), opacity: 0.95, fontWeight: 500 }}>
                   {t(m.blurb)}
                 </span>
                 <span key={phase.votes?.[id] || 0} className="vote-count bump">

@@ -999,6 +999,8 @@ img.heart-low {
 @media (orientation: landscape) and (max-height: 340px) {
   .touch-ui .vote-panel {
     transform: scale(0.55);
+    /* Starts below the name tag's row. */
+    margin-top: calc(var(--u) * 34) !important;
   }
 }
 
@@ -1058,6 +1060,14 @@ img.heart-low {
   /* No room for the stick's resting ring next to the vote: the stick still works anywhere
      on the left, it just isn't drawn until you touch. */
   .touch-ui .touch-root[data-zone='lobby'] .stick-ghost {
+    display: none;
+  }
+}
+
+/* Short landscape phones: the picture says what a mode is; its blurb would make the vote
+   too tall to fit between the name tag and the move stick. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .touch-ui .mode-blurb {
     display: none;
   }
 }
