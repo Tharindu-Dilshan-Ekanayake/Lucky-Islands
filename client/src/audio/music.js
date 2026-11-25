@@ -31,6 +31,11 @@ const MOODS = {
       [0, 77, 3], [4, 76, 2], [6, 74, 2], [8, 72, 6], [16, 74, 3], [20, 72, 2], [22, 69, 2], [24, 72, 6],
       [32, 70, 3], [36, 69, 2], [38, 67, 2], [40, 70, 6], [48, 72, 3], [52, 74, 2], [54, 76, 2], [56, 77, 7],
     ],
+    // A second phrase, answering the first.
+    melodyB: [
+      [0, 72, 2], [2, 74, 2], [4, 77, 4], [8, 81, 4], [12, 79, 4], [16, 77, 2], [18, 74, 2], [20, 74, 8],
+      [32, 74, 2], [34, 77, 2], [36, 79, 4], [40, 77, 4], [44, 74, 4], [48, 76, 4], [52, 72, 4], [56, 72, 8],
+    ],
     drums: 'soft',
     filter: 2600,
   },
@@ -46,6 +51,10 @@ const MOODS = {
       [0, 76, 2], [2, 76, 2], [4, 79, 2], [6, 76, 2], [8, 74, 4], [12, 72, 4], [16, 72, 2], [18, 74, 2], [20, 76, 4], [24, 69, 8],
       [32, 76, 2], [34, 76, 2], [36, 79, 2], [38, 81, 2], [40, 79, 4], [44, 76, 4], [48, 74, 4], [52, 76, 4], [56, 71, 8],
     ],
+    melodyB: [
+      [0, 81, 4], [4, 79, 2], [6, 76, 2], [8, 77, 4], [12, 76, 4], [16, 72, 3], [19, 74, 3], [22, 76, 2], [24, 72, 8],
+      [32, 79, 2], [34, 81, 2], [36, 83, 4], [40, 81, 2], [42, 79, 2], [44, 76, 4], [48, 74, 2], [50, 76, 2], [52, 79, 4], [56, 79, 8],
+    ],
     drums: 'drive',
     filter: 3400,
   },
@@ -58,6 +67,9 @@ const MOODS = {
       { root: 40, chord: [56, 59, 64] }, // E
     ],
     melody: [],
+    melodyB: [
+      [0, 69, 8], [8, 70, 8], [16, 69, 8], [24, 72, 8], [32, 69, 8], [40, 70, 8], [48, 69, 8], [56, 76, 8],
+    ],
     drums: 'tense',
     filter: 5200,
   },
@@ -82,6 +94,9 @@ export function createMusic(ctx, destination, noiseBuffer) {
   delay.connect(wet).connect(tone)
 
   let step = 0
+  /** Whole loops played: picks the phrase (A, B, A, rest), the key, and when to fill. */
+  let loops = 0
+  let shift = 0
   let nextAt = 0
   let timer = null
   let mood = MOODS.lobby
@@ -146,7 +161,11 @@ export function createMusic(ctx, destination, noiseBuffer) {
     const m = mood
     const six = 60 / m.bpm / 4
     const inBar = step % 16
-    const bar = m.bars[Math.floor(step / 16) % 4]
+    const base = m.bars[Math.floor(step / 16) % 4]
+    // Every few loops the whole song moves to a new key, so it never gets stale.
+    const bar = shift ? { root: base.root + shift, chord: base.chord.map((n) => n + shift) } : base
+    const lastBar = Math.floor((step % 64) / 16) === 3
+    const fill = lastBar && loops % 4 === 3
 
     if (m.drums === 'soft') {
       if (inBar === 0 || inBar === 10) kick(t, 0.11)
@@ -166,6 +185,8 @@ export function createMusic(ctx, destination, noiseBuffer) {
       if (inBar === 4 || inBar === 12) clap(t, 0.04)
       if (inBar % 4 === 2) hiss(t, { frequency: 7000, q: 1.2, volume: 0.012, length: 0.025 })
       if (m.drums === 'tense' && inBar % 2 === 1) hiss(t, { frequency: 9000, q: 2, volume: 0.006, length: 0.015 })
+      // A snare roll into the next section.
+      if (fill && inBar >= 8) clap(t, 0.012 + (inBar - 8) * 0.004)
       // Pulsing bass eighths.
       if (inBar % 2 === 0) note(bar.root + (inBar % 8 === 6 ? 12 : 0), t, { type: 'sawtooth', length: six * 1.6, volume: 0.05, cutoff: m.drums === 'tense' ? 900 : 600 })
       // Arpeggio up the chord: eighths, or sixteenths when tense.
@@ -175,10 +196,12 @@ export function createMusic(ctx, destination, noiseBuffer) {
         note(n, t, { type: 'square', length: six * 0.9, volume: 0.01, cutoff: m.filter, echo: true })
       }
     }
-    // The melody, every other time round so it doesn't nag.
-    if (m.melody.length && Math.floor(step / 64) % 2 === 0) {
-      for (const [at, midi, length] of m.melody) {
-        if (at === step % 64) note(midi, t, { type: m.drums === 'soft' ? 'triangle' : 'square', length: six * length * 0.95, volume: m.drums === 'soft' ? 0.03 : 0.014, attack: 0.015, cutoff: m.filter, echo: true })
+    if (fill && m.drums === 'soft' && inBar % 4 === 2) hiss(t, { frequency: 2400, q: 1.2, volume: 0.012, length: 0.05 })
+    // The melody: phrase A, phrase B, A again, then a loop of rest so it doesn't nag.
+    const phrase = [m.melody, m.melodyB, m.melody, null][loops % 4]
+    if (phrase?.length) {
+      for (const [at, midi, length] of phrase) {
+        if (at === step % 64) note(midi + shift, t, { type: m.drums === 'soft' ? 'triangle' : 'square', length: six * length * 0.95, volume: m.drums === 'soft' ? 0.03 : m.drums === 'tense' ? 0.012 : 0.014, attack: 0.015, cutoff: m.filter, echo: true })
       }
     }
   }
@@ -189,11 +212,17 @@ export function createMusic(ctx, destination, noiseBuffer) {
       // Change mood on a bar line.
       if (step % 16 === 0 && MOODS[wanted] !== mood) {
         mood = MOODS[wanted]
+        loops = 0
+        shift = 0
         tone.frequency.setTargetAtTime(mood.filter, nextAt, 0.5)
       }
       play(nextAt)
       nextAt += 60 / mood.bpm / 4
       step = (step + 1) % 128
+      if (step % 64 === 0) {
+        loops += 1
+        if (loops % 8 === 0) shift = [0, 2, -3, 3, -2][(loops / 8) % 5]
+      }
     }
   }
 
