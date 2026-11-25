@@ -27,8 +27,8 @@ function PanelBody({ panel }) {
   const Body = { bots: BotsPanel, cases: CasesPanel, backpack: BackpackPanel, shop: ShopPanel, daily: DailyPanel, quests: QuestsPanel, leaderboards: LeaderboardsPanel, settings: SettingsPanel }[panel]
   if (!Body) return null
   return (
-    <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/45" onPointerDown={(e) => e.target === e.currentTarget && close()}>
-      <div className="mc-panel pop-in relative flex flex-col text-white" style={{ width: `min(94vw, ${u(820)})`, maxHeight: '88vh', padding: u(18), gap: u(12) }}>
+    <div className="panel-wrap absolute inset-0 z-30 flex items-center justify-center bg-black/45" onPointerDown={(e) => e.target === e.currentTarget && close()}>
+      <div className="mc-panel pop-in relative flex flex-col text-white" style={{ width: `min(100%, ${u(760)})`, maxHeight: '100%', padding: u(16), gap: u(10) }}>
         <div className="flex items-center justify-between">
           <Fancy size={32} from="#ffffff" to="#ffd23b">
             {t(titles[panel])}

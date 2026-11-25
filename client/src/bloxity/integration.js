@@ -170,15 +170,19 @@ function installLifecycle(sdk) {
     gameplayStarted = true
     safeCall(game?.gameplayStart?.bind(game))
   }
-  /** Screen ads: 'panel' while a modal panel is open, 'gameplay' otherwise. */
+  /**
+   * Screen ads only around a popup (a panel) opened in the lobby; never while playing:
+   * not in a round (even with a panel open there), and not with no popup open.
+   */
   const sync = (state) => {
     if (!state.playable) return
     start()
-    setScreen(state.panel ? 'panel' : 'gameplay')
+    if (state.panel && state.zone === 'lobby') setScreen('panel')
+    else hideScreen()
   }
   sync(getGame())
   const unsubscribe = useGame.subscribe((state, prev) => {
-    if (state.playable !== prev.playable || state.panel !== prev.panel) sync(state)
+    if (state.playable !== prev.playable || state.panel !== prev.panel || state.zone !== prev.zone) sync(state)
   })
 
   const onPageHide = () => {

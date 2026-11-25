@@ -894,3 +894,34 @@ img.heart-low {
     transform: none;
   }
 }
+
+/* --- Popups leave room for the portal's screen ads ----------------------------------------
+ * While a popup is open in the lobby, Boxity may show ads at the sides and along the bottom
+ * of the game. Popups stay inside the space between them, so an ad never covers one.
+ */
+:root {
+  --ad-side: 0px;
+  --ad-bottom: 0px;
+}
+@media (orientation: landscape) and (min-width: 900px) {
+  :root {
+    --ad-side: min(320px, 18vw);
+    --ad-bottom: 100px;
+  }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  :root {
+    --ad-side: min(220px, 22vw);
+    --ad-bottom: 76px;
+  }
+}
+@media (orientation: portrait) {
+  :root {
+    --ad-side: 0px;
+    --ad-bottom: 130px;
+  }
+}
+.panel-wrap {
+  box-sizing: border-box;
+  padding: 12px max(12px, var(--ad-side)) max(12px, var(--ad-bottom));
+}
