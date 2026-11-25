@@ -17,6 +17,7 @@ export default function ClickToPlay() {
   const caseOpen = useGame((s) => s.caseOpen)
   const result = useGame((s) => s.result)
   const zone = useGame((s) => s.zone)
+  const touchUI = useGame((s) => s.touchUI)
 
   useEffect(() => {
     const onDown = (e) => {
@@ -27,8 +28,9 @@ export default function ClickToPlay() {
     return () => window.removeEventListener('mousedown', onDown)
   }, [])
 
-  // Touch screens get touch controls, not a mouse hint (the same check TouchControls uses).
-  if (locked || panel || caseOpen || runtime.input.touch || isTouchDevice() || (result && result.kind !== 'over')) return null
+  // Touch screens get touch controls, not a mouse hint (the same check TouchControls uses,
+  // and its store flag for screens that only reveal touch on the first tap).
+  if (locked || panel || caseOpen || touchUI || runtime.input.touch || isTouchDevice() || (result && result.kind !== 'over')) return null
   return (
     <div className="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 text-center" style={{ top: '62%' }}>
       <div className="mc-panel txt-o" style={{ padding: `${u(8)} ${u(18)}`, fontSize: u(20), opacity: 0.92 }}>

@@ -44,6 +44,8 @@ export const useGame = create((set, get) => ({
   killBanner: null,
   /** The quick chat picker is open. */
   quickChat: false,
+  /** Touch controls are showing (the HUD uses the compact touch layout). */
+  touchUI: false,
   /** `{ ups: [{ level, cash, case? }], id }` right after levelling up. */
   levelUp: null,
   /** The last lucky block result: { text, items, rare, bad, id }. */
@@ -110,6 +112,9 @@ export const useGame = create((set, get) => ({
   setResult: (result) => set({ result }),
   setRoundReward: (roundReward) => set({ roundReward }),
   setQuickChat: (quickChat) => set({ quickChat }),
+  setTouchUI: (touchUI) => {
+    if (get().touchUI !== touchUI) set({ touchUI })
+  },
   setLevelUp: (levelUp) => set({ levelUp: levelUp ? { ...levelUp, id: ++toastId } : null }),
   setCaseOpen: (caseOpen) => set({ caseOpen }),
 

@@ -169,7 +169,7 @@ function MenuButton({ label, icon, color, badge, onClick }) {
   return (
     <Button
       color={color}
-      className="relative flex items-center"
+      className="menu-btn relative flex items-center"
       style={{ width: u(178), padding: `${u(7)} ${u(12)}`, fontSize: u(17), fontWeight: 700, gap: u(10) }}
       onClick={onClick}
     >
@@ -212,7 +212,7 @@ export function Wallet() {
   const cash = useGame((s) => s.profile.cash)
   const shown = useCountUp(cash)
   return (
-    <div className="slide-in-up absolute flex flex-col" style={{ left: u(14), bottom: u(14), gap: u(6) }}>
+    <div className="wallet slide-in-up absolute flex flex-col" style={{ left: u(14), bottom: u(14), gap: u(6) }}>
       <div className="txt-o" style={{ fontSize: u(28), fontWeight: 700, color: '#ffd23b' }}>
         👑 {wins}
       </div>

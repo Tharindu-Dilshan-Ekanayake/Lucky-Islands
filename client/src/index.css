@@ -925,3 +925,48 @@ img.heart-low {
   box-sizing: border-box;
   padding: 12px max(12px, var(--ad-side)) max(12px, var(--ad-bottom));
 }
+
+/* --- Touch layout (phones, tablets): smaller lobby buttons, nothing on top of anything --------
+ * Set by TouchControls (body.touch-ui). The lobby menu shrinks so it stays clear of the vote
+ * in the middle; the wallet moves to the bottom centre, away from the move stick.
+ */
+.touch-ui .menu-btn {
+  width: calc(var(--u) * 128) !important;
+  padding: calc(var(--u) * 5) calc(var(--u) * 9) !important;
+  font-size: calc(var(--u) * 13) !important;
+  gap: calc(var(--u) * 7) !important;
+}
+.touch-ui .menu-btn svg {
+  width: calc(var(--u) * 18) !important;
+  height: calc(var(--u) * 18) !important;
+}
+.touch-ui .lobby-menu {
+  gap: calc(var(--u) * 8) !important;
+}
+.touch-ui .wallet {
+  left: 50% !important;
+  bottom: calc(var(--u) * 8) !important;
+  transform: translateX(-50%);
+  flex-direction: row;
+  align-items: baseline;
+  gap: calc(var(--u) * 18) !important;
+}
+.touch-ui .wallet > * {
+  font-size: calc(var(--u) * 22) !important;
+}
+/* Short landscape phones: the vote shrinks a little more to clear the menu and name tag. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .touch-ui .vote-panel {
+    transform: scale(0.62);
+  }
+  .touch-ui .lobby-menu {
+    top: calc(var(--u) * 64);
+  }
+}
+@media (orientation: portrait) {
+  .touch-ui .lobby-menu {
+    /* Above the move stick's ring (128 px tall, raised by --slot + 90u). */
+    top: auto;
+    bottom: calc(var(--slot) + var(--u) * 100 + 140px);
+  }
+}

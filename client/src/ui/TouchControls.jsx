@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ITEMS } from '@shared/balance'
 
 import { runtime } from '../game/runtime'
-import { useGame } from '../store/game'
+import { getGame, useGame } from '../store/game'
 import { u } from './format'
 import GameIcon from './GameIcon'
 import { isTouchDevice } from './device'
@@ -59,8 +59,12 @@ export default function TouchControls() {
     return () => window.removeEventListener('touchstart', onTouch)
   }, [])
 
+  // Touch layout on: the store knows (the mouse hint hides) and so does CSS (compact HUD).
   useEffect(() => {
-    if (enabled) runtime.input.touch = true
+    if (!enabled) return
+    runtime.input.touch = true
+    getGame().setTouchUI(true)
+    document.body.classList.add('touch-ui')
   }, [enabled])
 
   useEffect(() => {
