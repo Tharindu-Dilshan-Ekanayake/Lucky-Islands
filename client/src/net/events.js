@@ -8,6 +8,7 @@ import { pushFx, runtime } from '../game/runtime'
 import { applyEdits, enterLobby, enterMatch, worldState } from '../game/world'
 import { getGame } from '../store/game'
 import { showHit } from '../ui/juice'
+import { showQuickChat } from './quickChat'
 import { applyRoster, applySnapshot, clearRemotes } from './remotes'
 
 /**
@@ -244,6 +245,14 @@ export function handleServerEvent(type, p = {}) {
       if (runtime.zone === 'match' || runtime.zone === 'spec') {
         const prev = game.result
         game.setResult({ kind: me ? 'win' : 'over', winner: p.name, placement: prev?.placement })
+      }
+      return
+    }
+    case 'qc': {
+      const text = showQuickChat(p.eid, p.i)
+      if (text) {
+        sfx.hover()
+        game.addFeed({ chat: true, k: p.eid === runtime.eid ? 'You' : p.name, v: text, team: p.team })
       }
       return
     }

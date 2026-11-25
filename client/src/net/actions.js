@@ -23,6 +23,7 @@ export const actions = {
   welcomeGift: () => send('welcomeGift'),
   tutorialDone: () => send('tutorialDone'),
   vote: (mode) => send('vote', { mode }),
+  quickChat: (i) => send('qc', { i }),
   voteMap: (map) => send('voteMap', { map }),
   voteBots: (level) => send('voteBots', { level }),
   afk: (on) => send('afk', { on }),

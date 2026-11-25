@@ -42,6 +42,8 @@ export const useGame = create((set, get) => ({
   toasts: [],
   /** Your last elimination: { name, streak, cash, id }. */
   killBanner: null,
+  /** The quick chat picker is open. */
+  quickChat: false,
   /** `{ ups: [{ level, cash, case? }], id }` right after levelling up. */
   levelUp: null,
   /** The last lucky block result: { text, items, rare, bad, id }. */
@@ -107,6 +109,7 @@ export const useGame = create((set, get) => ({
   setLoot: (loot) => set({ loot: loot ? { ...loot, id: ++toastId } : null }),
   setResult: (result) => set({ result }),
   setRoundReward: (roundReward) => set({ roundReward }),
+  setQuickChat: (quickChat) => set({ quickChat }),
   setLevelUp: (levelUp) => set({ levelUp: levelUp ? { ...levelUp, id: ++toastId } : null }),
   setCaseOpen: (caseOpen) => set({ caseOpen }),
 

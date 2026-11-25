@@ -19,6 +19,7 @@ import {
 import { LOBBY_SWORD, TEAMS } from '@shared/balance'
 
 import { bubbleFor } from '../bloxity/chat'
+import { quickBubble } from '../net/quickChat'
 import { getGame } from '../store/game'
 import { getQuality } from '../store/quality'
 import { capeUV, getCapeAtlas } from './art/capes'
@@ -375,7 +376,7 @@ function placeLabel(label, c, camera, size, maxDist, now) {
     label.name.style.color = t ? '#0d0a18' : ''
     label.name.textContent = team >= 0 && team === runtime.myTeam ? `▼ ${c.name}` : c.name
   }
-  const bubble = bubbleFor(null, c.name, now) || ''
+  const bubble = quickBubble(c.eid, now) || bubbleFor(null, c.name, now) || ''
   if (bubble !== label.bubbleText) {
     label.bubbleText = bubble
     label.bubble.textContent = bubble

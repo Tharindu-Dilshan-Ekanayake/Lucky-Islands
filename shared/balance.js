@@ -392,6 +392,11 @@ export const AD_REWARDS = {
   'free-cash': { label: '+150 Cash', icon: 'cash', grant: { cash: 150 }, cooldownMs: 3 * 60 * 1000 },
 }
 
+/** Quick chat: what a player can say with one key (works offline and for guests too). */
+export const QUICK_CHAT = ['GG!', 'Nice one!', 'Help!', 'Team up?', 'Run!', 'Oops!', "Let's go!", '😂', '🔥', '👋']
+/** At most one quick chat line per this many ms. */
+export const QUICK_CHAT_MS = 1500
+
 /** Names for bots that fill empty islands. */
 export const BOT_NAMES = [
   'BlockyBen', 'PixelPia', 'LuckyLuca', 'CraftyCam', 'SkySam', 'NoobNoah', 'MinerMia', 'TNTtom',

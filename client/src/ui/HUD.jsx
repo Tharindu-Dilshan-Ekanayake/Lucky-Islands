@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
-import { BOT_LEVEL_IDS, BOT_LEVELS, CAPES, CASES, EFFECTS, ITEMS, lavaHeight, LAVA, levelXp, MODES, MODE_IDS, ROUND, SWORD_SKINS, TEAMS } from '@shared/balance'
+import { BOT_LEVEL_IDS, BOT_LEVELS, CAPES, CASES, EFFECTS, ITEMS, lavaHeight, LAVA, levelXp, MODES, MODE_IDS, QUICK_CHAT, ROUND, SWORD_SKINS, TEAMS } from '@shared/balance'
 import { MAP_IDS, MAPS } from '@shared/maps'
 import { dailyStatus } from '@shared/logic'
 
@@ -27,6 +27,7 @@ export default function HUD() {
       {/* Every zone change (lobby, round, spectating) fades in from dark. */}
       <div key={zone} className="zone-fade" />
       <SettingsButton />
+      <QuickChat />
       <NetBadge />
       <TopCenter />
       {zone === 'match' && (
@@ -114,6 +115,46 @@ function NameTag() {
         </div>
       </div>
     </div>
+  )
+}
+
+/** Quick chat: a button (and the T key) opening ten one-tap lines. */
+function QuickChat() {
+  const open = useGame((s) => s.quickChat)
+  const setOpen = useGame((s) => s.setQuickChat)
+  return (
+    <>
+      <Button
+        className="pointer-events-auto absolute flex items-center justify-center"
+        color="#2b8fd8"
+        title="Quick chat (T)"
+        style={{ left: u(14), top: u(76), width: u(52), height: u(52), padding: 0, fontSize: u(24) }}
+        onClick={() => setOpen(!open)}
+      >
+        💬
+      </Button>
+      {open && (
+        <div className="mc-panel pointer-events-auto pop-in absolute grid" style={{ left: u(76), top: u(76), zIndex: 25, padding: u(8), gap: u(6), gridTemplateColumns: 'repeat(2, auto)' }}>
+          {QUICK_CHAT.map((text, i) => (
+            <button
+              key={text}
+              type="button"
+              className="mc-btn txt-o flex items-center"
+              style={{ '--c': '#4b5468', padding: `${u(5)} ${u(12)}`, fontSize: u(16), gap: u(8), minWidth: u(140) }}
+              onClick={() => {
+                actions.quickChat(i)
+                setOpen(false)
+              }}
+            >
+              <span className="chip" style={{ fontSize: u(11), padding: `0 ${u(6)}` }}>
+                {(i + 1) % 10}
+              </span>
+              {text}
+            </button>
+          ))}
+        </div>
+      )}
+    </>
   )
 }
 
@@ -613,7 +654,11 @@ function KillFeed() {
     <div className="absolute flex flex-col items-end" style={{ right: u(14), top: u(84), gap: u(4) }}>
       {feed.map((f) => (
         <div key={f.id} className="mc-panel txt-o slide-in-right" style={{ padding: `${u(3)} ${u(10)}`, fontSize: u(16) }}>
-          {f.k ? (
+          {f.chat ? (
+            <>
+              <span style={{ color: f.team >= 0 && f.team < TEAMS.length ? TEAMS[f.team].color : '#9fe6ff' }}>{f.k}:</span> {f.v}
+            </>
+          ) : f.k ? (
             <>
               <span style={{ color: '#ffd23b' }}>{f.k}</span> {how[f.how] || '⚔'} <span style={{ color: '#ff8a8a' }}>{f.v}</span>
             </>

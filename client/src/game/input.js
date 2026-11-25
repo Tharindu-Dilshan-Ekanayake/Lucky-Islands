@@ -73,7 +73,19 @@ export function installInput() {
     if (e.target instanceof HTMLInputElement) return
     const game = getGame()
     if (e.code === 'Escape') {
+      if (game.quickChat) game.setQuickChat(false)
       if (game.panel) game.closePanel()
+      return
+    }
+    // Quick chat: T opens the picker; a number says that line.
+    if (e.code === 'KeyT' && !game.panel && !e.repeat) {
+      game.setQuickChat(!game.quickChat)
+      return
+    }
+    if (game.quickChat && e.code.startsWith('Digit')) {
+      const n = Number(e.code.slice(5))
+      actions.quickChat(n === 0 ? 9 : n - 1)
+      game.setQuickChat(false)
       return
     }
     if (!playing()) return

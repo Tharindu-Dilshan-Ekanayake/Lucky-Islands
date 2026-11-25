@@ -5,6 +5,8 @@ import {
   BOT_NAMES,
   breakSeconds,
   EFFECTS,
+  QUICK_CHAT,
+  QUICK_CHAT_MS,
   HOTBAR,
   ITEMS,
   LAVA,
@@ -221,6 +223,18 @@ export class GameHost {
           this.phaseDirty = true
         }
         return
+      case 'qc': {
+        // Quick chat: one of the fixed lines, rate limited, to everyone who can see you.
+        const ent = this.entOf(cid)
+        const i = Math.floor(num(p.i, -1))
+        const now = this.now()
+        if (!ent || i < 0 || i >= QUICK_CHAT.length || now - (ent.qcAt || 0) < QUICK_CHAT_MS) return
+        ent.qcAt = now
+        const msg = { eid: ent.eid, name: ent.name, i, team: ent.team ?? -1 }
+        if (ent.zone === 'lobby') this.toZone('lobby', 'qc', msg)
+        else this.toMatchViewers('qc', msg)
+        return
+      }
       case 'voteMap':
         if (this.mapOptions.includes(p.map) && this.phase === 'intermission' && this.voteStage === 'map') {
           member.mapVote = p.map
