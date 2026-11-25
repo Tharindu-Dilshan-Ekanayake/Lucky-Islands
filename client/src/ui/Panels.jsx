@@ -3,7 +3,7 @@ import { u } from './format'
 import { Button, Fancy } from './kit'
 import { BackpackPanel, CaseOpening, CasesPanel } from './panels/Cosmetics'
 import { DailyPanel, LeaderboardsPanel, QuestsPanel, ShopPanel } from './panels/Progress'
-import { BotsPanel, SettingsPanel } from './panels/Options'
+import { SettingsPanel } from './panels/Options'
 import { t } from './i18n'
 
 /**
@@ -23,8 +23,8 @@ export default function Panels() {
 
 function PanelBody({ panel }) {
   const close = useGame((s) => s.closePanel)
-  const titles = { bots: 'PLAY WITH BOTS', cases: 'CASES', backpack: 'BACKPACK', shop: 'SHOP', daily: 'DAILY REWARD', quests: 'LEVEL & QUESTS', leaderboards: 'TOP PLAYERS', settings: 'SETTINGS' }
-  const Body = { bots: BotsPanel, cases: CasesPanel, backpack: BackpackPanel, shop: ShopPanel, daily: DailyPanel, quests: QuestsPanel, leaderboards: LeaderboardsPanel, settings: SettingsPanel }[panel]
+  const titles = { cases: 'CASES', backpack: 'BACKPACK', shop: 'SHOP', daily: 'DAILY REWARD', quests: 'LEVEL & QUESTS', leaderboards: 'TOP PLAYERS', settings: 'SETTINGS' }
+  const Body = { cases: CasesPanel, backpack: BackpackPanel, shop: ShopPanel, daily: DailyPanel, quests: QuestsPanel, leaderboards: LeaderboardsPanel, settings: SettingsPanel }[panel]
   if (!Body) return null
   return (
     <div className="panel-wrap absolute inset-0 z-30 flex items-center justify-center bg-black/45" onPointerDown={(e) => e.target === e.currentTarget && close()}>

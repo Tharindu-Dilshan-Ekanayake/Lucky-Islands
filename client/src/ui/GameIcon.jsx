@@ -63,6 +63,60 @@ const SHAPES = {
     </g>
   ),
   up: <path d="M12 3 L21 13 L15.5 13 L15.5 21 L8.5 21 L8.5 13 L3 13 Z" />,
+  // Lobby menu.
+  bag: (
+    <g>
+      <path d="M8.5 8 L8.5 6 Q8.5 2.6 12 2.6 Q15.5 2.6 15.5 6 L15.5 8" fill="none" strokeWidth="1.8" />
+      <path d="M4.5 7.6 L19.5 7.6 L20.8 20.4 Q20.9 21.6 19.7 21.6 L4.3 21.6 Q3.1 21.6 3.2 20.4 Z" />
+      <circle cx="8.5" cy="11" r="1.1" fill="rgba(30,20,60,0.55)" stroke="none" />
+      <circle cx="15.5" cy="11" r="1.1" fill="rgba(30,20,60,0.55)" stroke="none" />
+    </g>
+  ),
+  chest: (
+    <g>
+      <path d="M3 10 Q3 4 12 4 Q21 4 21 10 Z" />
+      <rect x="3" y="10" width="18" height="10.5" rx="1.4" />
+      <path d="M3 10.6 L21 10.6" fill="none" strokeWidth="1.2" />
+      <rect x="10" y="8.6" width="4" height="5.2" rx="1" fill="#ffd23b" />
+    </g>
+  ),
+  backpack: (
+    <g>
+      <path d="M9 5 Q9 2.5 12 2.5 Q15 2.5 15 5" fill="none" strokeWidth="1.8" />
+      <path d="M5 9.5 Q5 4.6 12 4.6 Q19 4.6 19 9.5 L19 19.6 Q19 21.5 17 21.5 L7 21.5 Q5 21.5 5 19.6 Z" />
+      <rect x="7.8" y="12.6" width="8.4" height="6" rx="1.4" fill="rgba(255,255,255,0.7)" />
+      <path d="M7.8 14.8 L16.2 14.8" fill="none" strokeWidth="1" />
+    </g>
+  ),
+  gift: (
+    <g>
+      <rect x="3.2" y="8.4" width="17.6" height="4.4" rx="1" />
+      <rect x="4.6" y="12.8" width="14.8" height="8.6" rx="1" />
+      <rect x="10.6" y="8.4" width="2.8" height="13" fill="#ff5a6e" stroke="none" />
+      <path d="M12 8.4 Q7.4 2.4 5.8 5.4 Q5 7.8 12 8.4 Q19 7.8 18.2 5.4 Q16.6 2.4 12 8.4 Z" />
+    </g>
+  ),
+  scroll: (
+    <g>
+      <path d="M6 3.5 L17.5 3.5 Q19.5 3.5 19.5 5.5 L19.5 18 Q19.5 20.5 17 20.5 L6.5 20.5 Q4.5 20.5 4.5 18.5 L4.5 5 Q4.5 3.5 6 3.5 Z" />
+      <path d="M8 8 L16 8 M8 11.5 L16 11.5 M8 15 L13 15" fill="none" stroke="rgba(30,20,60,0.55)" strokeWidth="1.6" />
+      <path d="M16.6 13.6 L17.5 15.5 L19.6 15.8 L18.1 17.2 L18.5 19.3 L16.6 18.3 L14.7 19.3 L15.1 17.2 L13.6 15.8 L15.7 15.5 Z" fill="#ffd23b" />
+    </g>
+  ),
+  trophy: (
+    <g>
+      <path d="M7 3 L17 3 L17 9 Q17 14.5 12 14.5 Q7 14.5 7 9 Z" />
+      <path d="M7 5 Q3 5 3.6 8.6 Q4.4 11.6 7.6 11.8 M17 5 Q21 5 20.4 8.6 Q19.6 11.6 16.4 11.8" fill="none" strokeWidth="1.8" />
+      <rect x="10.6" y="14.2" width="2.8" height="3.6" />
+      <rect x="7" y="17.6" width="10" height="3.6" rx="1" />
+    </g>
+  ),
+  moon: (
+    <g>
+      <path d="M15.5 3 Q8 3.5 7.4 11.6 Q7.4 19.6 15.6 21 Q8 22.6 4.2 16.6 Q1.2 10.2 6 5.6 Q10 2.2 15.5 3 Z" />
+      <path d="M15 7 L19 7 L15 11.5 L19 11.5" fill="none" strokeWidth="1.6" />
+    </g>
+  ),
   down: (
     <g>
       <path d="M4 5 L12 12 L20 5 L20 9 L12 16 L4 9 Z" />

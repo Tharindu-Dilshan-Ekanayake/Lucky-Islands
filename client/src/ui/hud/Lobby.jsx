@@ -12,6 +12,7 @@ import { useGame } from '../../store/game'
 import { formatCash, u, useCountUp, useNow } from '../format'
 import { Button, Fancy } from '../kit'
 import { t } from '../i18n'
+import GameIcon from '../GameIcon'
 
 /** The lobby HUD: the vote, server fill, the menu, wallet and case prompt, the welcome gift. */
 
@@ -164,10 +165,16 @@ export function VoteCards({ phase }) {
   )
 }
 
-function MenuButton({ label, color, badge, onClick }) {
+function MenuButton({ label, icon, color, badge, onClick }) {
   return (
-    <Button color={color} className="relative" style={{ width: u(150), padding: `${u(9)} 0`, fontSize: u(17), fontWeight: 700 }} onClick={onClick}>
-      {label}
+    <Button
+      color={color}
+      className="relative flex items-center"
+      style={{ width: u(178), padding: `${u(7)} ${u(12)}`, fontSize: u(17), fontWeight: 700, gap: u(10) }}
+      onClick={onClick}
+    >
+      <GameIcon name={icon} size={26} />
+      <span className="flex-1 text-left">{label}</span>
       {badge && (
         <span className="absolute flex items-center justify-center rounded-full bg-red-600" style={{ right: u(-10), top: u(-10), width: u(24), height: u(24), fontSize: u(15), border: `${u(3)} solid #0d0a18` }}>
           !
@@ -189,14 +196,13 @@ export function LobbyMenu() {
   }
   return (
     <div className="lobby-menu pointer-events-auto absolute" style={{ left: u(14), gap: u(12) }}>
-      <MenuButton label={t('SHOP')} color="#e0a21b" onClick={() => go('shop')} />
-      <MenuButton label={t('CASES')} color="#c25cff" onClick={() => go('cases', { caseId: 'cape' })} />
-      <MenuButton label={t('BACKPACK')} color="#b0633a" onClick={() => go('backpack')} />
-      <MenuButton label={t('DAILY')} color="#3fa2ff" badge={dailyReady} onClick={() => go('daily')} />
-      <MenuButton label={t('QUESTS')} color="#e0702b" onClick={() => go('quests')} />
-      <MenuButton label={t('TOP')} color="#2bb3a3" onClick={() => go('leaderboards')} />
-      <MenuButton label={t('BOTS ONLY')} color="#7a5cd8" onClick={() => go('bots')} />
-      <MenuButton label={afk ? t('AFK: ON') : t('AFK: OFF')} color={afk ? '#d8443a' : '#4b5563'} onClick={() => actions.afk(!afk)} />
+      <MenuButton label={t('SHOP')} icon="bag" color="#e0a21b" onClick={() => go('shop')} />
+      <MenuButton label={t('CASES')} icon="chest" color="#c25cff" onClick={() => go('cases', { caseId: 'cape' })} />
+      <MenuButton label={t('BACKPACK')} icon="backpack" color="#b0633a" onClick={() => go('backpack')} />
+      <MenuButton label={t('DAILY')} icon="gift" color="#3fa2ff" badge={dailyReady} onClick={() => go('daily')} />
+      <MenuButton label={t('QUESTS')} icon="scroll" color="#e0702b" onClick={() => go('quests')} />
+      <MenuButton label={t('TOP')} icon="trophy" color="#2bb3a3" onClick={() => go('leaderboards')} />
+      <MenuButton label={afk ? t('AFK: ON') : t('AFK: OFF')} icon="moon" color={afk ? '#d8443a' : '#4b5563'} onClick={() => actions.afk(!afk)} />
     </div>
   )
 }

@@ -2,72 +2,19 @@ import { useState } from 'react'
 
 import { isMuted, setMuted } from '../../audio/sfx'
 import { runtime } from '../../game/runtime'
-import { switchLobby } from '../../net/connection'
 import { useGame } from '../../store/game'
 import { QUALITY_LEVELS, useQuality } from '../../store/quality'
 import { u } from '../format'
 import { Button } from '../kit'
 import { t } from '../i18n'
 
-/** Settings (graphics, sound, controls) and the bots-only private room. */
+/** Settings: graphics, sound and controls. */
 
 /** What each graphics level means, for the settings buttons. */
 const GRAPHICS = {
   LOW: { label: 'LOW', color: '#3a8f5c', blurb: 'Fastest. Short view, no particles. Best for phones.' },
   MEDIUM: { label: 'MID', color: '#3a6fd8', blurb: 'Particles, glowing lava, more clouds, smoother edges.' },
   HIGH: { label: 'HIGH', color: '#a24ad8', blurb: 'Farthest view and sharpest picture. Strong PCs.' },
-}
-
-/** Playing just with bots: a private room of your own (online), or how offline works. */
-export function BotsPanel() {
-  const net = useGame((s) => s.net)
-  const close = useGame((s) => s.closePanel)
-  const online = net.mode === 'online'
-  return (
-    <div className="flex flex-col" style={{ gap: u(12) }}>
-      <div className="txt-o" style={{ fontSize: u(17), lineHeight: 1.35 }}>
-        Every round has 8 fighters: any island without a player gets a bot. Bots open lucky blocks, build bridges, fight - and team up with you in team modes.
-      </div>
-      <div className="txt-o" style={{ fontSize: u(15), color: '#cfc6ee', lineHeight: 1.35 }}>
-        Pick how hard they play in the lobby vote (BOTS: EASY / NORMAL / HARD).
-      </div>
-      {online ? (
-        <div className="flex flex-wrap items-center" style={{ gap: u(10) }}>
-          <Button
-            color="#7a5cd8"
-            style={{ padding: `${u(10)} ${u(22)}`, fontSize: u(20), fontWeight: 700 }}
-            onClick={() => {
-              close()
-              switchLobby({ mode: 'private' })
-            }}
-          >
-            {net.isPrivate ? 'NEW PRIVATE ROOM' : 'PRIVATE ROOM: ME + BOTS'}
-          </Button>
-          {net.isPrivate && (
-            <Button
-              color="#3a6fd8"
-              style={{ padding: `${u(10)} ${u(22)}`, fontSize: u(20) }}
-              onClick={() => {
-                close()
-                switchLobby({ mode: 'public' })
-              }}
-            >
-              BACK TO PUBLIC
-            </Button>
-          )}
-        </div>
-      ) : (
-        <div className="txt-o" style={{ fontSize: u(16), color: '#7cff6b' }}>
-          You're offline, so every round is you and 7 bots already.
-        </div>
-      )}
-      {online && net.isPrivate && net.code && (
-        <div className="txt-o" style={{ fontSize: u(15), color: '#bfe8ff' }}>
-          Room code {net.code} - friends can join with it.
-        </div>
-      )}
-    </div>
-  )
 }
 
 export function SettingsPanel() {

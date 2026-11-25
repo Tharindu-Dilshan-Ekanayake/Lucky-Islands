@@ -19,7 +19,7 @@ Bay, Brick Town) are offered each round, never the last one played -
 and the round starts. Each step ends as soon as everyone has voted. Players who arrive
 mid-round can spectate or join it, taking over a bot (or a free island). In team modes
 players are dealt evenly across the teams; there is no friendly fire and the whole
-winning team wins. "Bots only" opens a private room of your own. Cases unlock capes and
+winning team wins. Cases unlock capes and
 sword skins with the cash you earn.
 
 Progression: rounds give XP (playing, kills, lucky blocks, placement, wins); every level
