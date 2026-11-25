@@ -23,6 +23,7 @@ import {
 } from './balance.js'
 import { createBrain, thinkBot } from './bots.js'
 import { generateLobby, generateMatch, ISLAND_TOP, MAP_IDS, MATCH_SIZE } from './maps.js'
+import { checkMove, createMoveState, resetMoveState } from './movecheck.js'
 import { cellOverlapsBody, createBody, PLAYER } from './physics.js'
 import { B, BLOCKS, blockKey, isLucky, isSolidBlock, raycastVoxels, rayBox } from './voxel.js'
 
@@ -48,9 +49,11 @@ import { B, BLOCKS, blockKey, isLucky, isSolidBlock, raycastVoxels, rayBox } fro
 export const ANIMS = ['idle', 'walk', 'sprint', 'sneak', 'air']
 export const ITEM_IDS = Object.keys(ITEMS)
 const SIM_HZ = 20
-/** Fastest a player may move between two reports (blocks/s), knockback included. */
+/** Right after knockback or a teleport: a loose cap only (blocks/s, plus slack). */
 const MAX_SPEED = 16
 const MOVE_SLACK = 3
+/** A rejected move: positions are ignored until the client takes the correction. */
+const CORRECTION_MS = 1500
 /** Allowance on reach checks for network lag. */
 const REACH_SLACK = 1.6
 const NATURAL_REGEN_MS = 2500
@@ -67,8 +70,9 @@ export class GameHost {
    * @param {() => number} [o.now]
    * @param {() => number} [o.random]
    */
-  constructor({ send, onReward = () => {}, now = () => Date.now(), random = Math.random }) {
+  constructor({ send, onReward = () => {}, now = () => Date.now(), random = Math.random, log = (msg) => console.warn(msg) }) {
     this.sendTo = send
+    this.log = log
     this.onReward = onReward
     this.now = now
     this.random = random
@@ -168,6 +172,8 @@ export class GameHost {
       dig: null,
       posAt: 0,
       tpGrace: 0,
+      mv: createMoveState(),
+      awaitTp: null,
       dirty: true,
       ...extra,
       cape: extra.cape || 'none',
@@ -284,10 +290,30 @@ export class GameHost {
     ent.yaw = num(p.yaw)
     ent.pitch = clamp(num(p.pitch), -1.6, 1.6)
     ent.anim = clamp(Math.floor(num(p.a)), 0, ANIMS.length - 1)
-    if (ent.zone === 'match' && ent.alive && now > ent.tpGrace) {
-      const dt = Math.max(0.05, (now - ent.posAt) / 1000)
-      if (Math.hypot(x - ent.x, z - ent.z) > MAX_SPEED * dt + MOVE_SLACK) {
-        this.teleport(ent, ent.x, ent.y, ent.z)
+    if (ent.zone === 'match' && ent.alive) {
+      // Waiting for the client to take a correction: its stale reports don't count.
+      if (ent.awaitTp) {
+        const t = ent.awaitTp
+        if (Math.hypot(x - t.x, y - t.y, z - t.z) > 2 && now < t.until) return
+        ent.awaitTp = null
+        resetMoveState(ent.mv, ent.y, now)
+        ent.posAt = now
+      }
+      const dt = Math.max(0.02, (now - ent.posAt) / 1000)
+      let bad = null
+      if (now <= ent.tpGrace) {
+        // Knockback or a teleport in flight: only a loose cap, and start over from here.
+        if (Math.hypot(x - ent.x, z - ent.z) > MAX_SPEED * dt + MOVE_SLACK) bad = 'speed'
+        else resetMoveState(ent.mv, y, now)
+      } else {
+        const fx = ent.effects
+        bad = checkMove(this.match.world, ent.mv, ent, { x, y, z }, dt, now, {
+          speedMul: fx.speed > now ? EFFECTS.speed.speedMul : 1,
+          jumpMul: fx.jump > now ? EFFECTS.jump.jumpMul : 1,
+        })
+      }
+      if (bad) {
+        this.correct(ent, bad)
         return
       }
     }
@@ -1287,6 +1313,19 @@ export class GameHost {
     ent.dirty = true
   }
 
+  /** A move that couldn't have happened: put them back where they last were. */
+  correct(ent, why) {
+    const now = this.now()
+    const mv = ent.mv
+    mv.strikes = now - mv.strikeAt < 60_000 ? mv.strikes + 1 : 1
+    mv.strikeAt = now
+    if (mv.strikes === 20) this.log(`movement: ${ent.name} corrected 20 times in a minute (${why})`)
+    ent.posAt = now
+    ent.awaitTp = { x: ent.x, y: ent.y, z: ent.z, until: now + CORRECTION_MS }
+    resetMoveState(mv, ent.y, now)
+    if (ent.cid) this.sendTo(ent.cid, 'tp', { x: ent.x, y: ent.y, z: ent.z, yaw: null, zone: ent.zone })
+  }
+
   teleport(ent, x, y, z, yaw) {
     ent.x = x
     ent.y = y
@@ -1294,6 +1333,8 @@ export class GameHost {
     if (yaw !== undefined) ent.yaw = yaw
     ent.posAt = this.now()
     ent.tpGrace = this.now() + 1200
+    ent.awaitTp = null
+    if (ent.mv) resetMoveState(ent.mv, y, this.now())
     if (ent.body) {
       ent.body.x = x
       ent.body.y = y
