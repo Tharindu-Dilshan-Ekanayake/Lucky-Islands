@@ -829,3 +829,68 @@ img.heart-low {
     animation: none !important;
   }
 }
+
+/* --- Vote rows: one line on wide screens, a grid when there are many or the screen is narrow. */
+.vote-row {
+  display: flex;
+}
+.vote-maps {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+}
+
+/* --- Phones held upright ---------------------------------------------------------------------
+ * The same HUD, re-flowed for a tall, narrow screen: the corner buttons sit beside your name
+ * tag instead of under it, the title goes under that row, vote cards wrap three to a line,
+ * and the touch buttons and stick move up above the hotbar (which keeps the bottom edge).
+ */
+@media (orientation: portrait) {
+  .top-right {
+    flex-direction: row-reverse;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: flex-start;
+    max-width: calc(100vw - var(--u) * 28);
+  }
+  .top-right > .tr-feed {
+    /* The kill feed: its own line under the name tag. */
+    flex-basis: 100%;
+    align-items: flex-end;
+  }
+  .objective {
+    top: calc(var(--u) * 215) !important;
+    max-width: calc(100vw - var(--u) * 16);
+  }
+  .toasts {
+    top: calc(var(--u) * 300) !important;
+    max-width: calc(100vw - var(--u) * 16);
+    text-align: center;
+  }
+  .top-center {
+    top: calc(var(--u) * 110) !important;
+    max-width: calc(100vw - var(--u) * 16);
+  }
+  .vote-panel {
+    max-width: calc(100vw - var(--u) * 20);
+  }
+  .vote-modes {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .vote-modes > .vote-card {
+    width: auto !important;
+  }
+  .vote-maps > .vote-card {
+    width: calc(var(--u) * 240) !important;
+  }
+  .touch-cluster {
+    bottom: calc(var(--slot) + var(--u) * 80) !important;
+  }
+  .stick-ghost {
+    bottom: calc(var(--slot) + var(--u) * 90) !important;
+  }
+  .lobby-menu {
+    top: 44%;
+    transform: none;
+  }
+}

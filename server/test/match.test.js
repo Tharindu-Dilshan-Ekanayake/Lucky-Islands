@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { casePool, CASES, ITEMS, lavaHeight, LUCKY_LOOT, MODES, ROUND, rollLucky } from '../../shared/balance.js'
+import { casePool, CASES, ITEMS, lavaHeight, LUCKY_LOOT, MAP_CHOICES, MODES, ROUND, rollLucky } from '../../shared/balance.js'
 import { GameHost, ITEM_IDS } from '../../shared/host.js'
 import { applyRoundResult, claimDaily, createProfile, normalizeProfile, openCase } from '../../shared/logic.js'
 import { generateLobby, generateMatch, ISLAND_TOP, MAP_IDS } from '../../shared/maps.js'
@@ -255,7 +255,7 @@ test('the lobby votes on the mode first, then the map, and everyone holds a swor
   host.message('a', 'vote', { mode: 'classic' })
   assert.equal(host.members.get('a').vote, 'teams2', 'no mode votes once the mode is chosen')
   // Three different maps are on offer; one that isn't can't be voted for.
-  assert.equal(new Set(phase.mapOptions).size, 3)
+  assert.equal(new Set(phase.mapOptions).size, MAP_CHOICES)
   const offMenu = MAP_IDS.find((id) => !phase.mapOptions.includes(id))
   host.message('a', 'voteMap', { map: offMenu })
   assert.equal(host.members.get('a').mapVote, null)

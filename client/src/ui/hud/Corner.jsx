@@ -70,9 +70,9 @@ export function NameTag() {
  */
 export function TopRight() {
   return (
-    <div className="absolute flex flex-col items-end" style={{ right: u(14), top: u(14), gap: u(10) }}>
+    <div className="top-right absolute flex flex-col items-end" style={{ right: u(14), top: u(14), gap: u(10) }}>
       <NameTag />
-      <div className="relative flex" style={{ gap: u(10) }}>
+      <div className="tr-buttons relative flex" style={{ gap: u(10) }}>
         <QuickChat />
         <SettingsButton />
       </div>
@@ -188,7 +188,7 @@ export function KillFeed() {
   if (!feed.length) return null
   const how = { melee: '⚔', arrow: '➶', snowball: '❄', tnt: '✹', lava: '🔥', void: '↓', burn: '🔥', lightning: 'ϟ', left: '⇥', pearl: '✦' }
   return (
-    <div className="flex flex-col items-end" style={{ gap: u(4) }}>
+    <div className="tr-feed flex flex-col items-end" style={{ gap: u(4) }}>
       {feed.map((f) => (
         <div key={f.id} className="mc-panel txt-o slide-in-right" style={{ padding: `${u(3)} ${u(10)}`, fontSize: u(16) }}>
           {f.chat ? (
@@ -214,7 +214,7 @@ export function Toasts() {
   const toasts = useGame((s) => s.toasts)
   const colors = { success: '#7cff6b', error: '#ff6b6b', kill: '#ffd23b', info: '#ffffff' }
   return (
-    <div className="absolute left-1/2 flex -translate-x-1/2 flex-col items-center" style={{ top: u(205), gap: u(6) }}>
+    <div className="toasts absolute left-1/2 flex -translate-x-1/2 flex-col items-center" style={{ top: u(205), gap: u(6) }}>
       {toasts.map((t) => (
         <div key={t.id} className="txt-o pop-in" style={{ fontSize: u(22), color: colors[t.kind] || '#fff' }}>
           {t.text}

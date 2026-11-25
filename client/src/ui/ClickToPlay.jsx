@@ -26,7 +26,9 @@ export default function ClickToPlay() {
     return () => window.removeEventListener('mousedown', onDown)
   }, [])
 
-  if (locked || panel || caseOpen || runtime.input.touch || (result && result.kind !== 'over')) return null
+  // Phones and tablets have no mouse to capture: no hint there (touch controls instead).
+  const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
+  if (locked || panel || caseOpen || runtime.input.touch || coarse || (result && result.kind !== 'over')) return null
   return (
     <div className="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 text-center" style={{ top: '62%' }}>
       <div className="mc-panel txt-o" style={{ padding: `${u(8)} ${u(18)}`, fontSize: u(20), opacity: 0.92 }}>

@@ -86,7 +86,7 @@ export function Objective() {
   }
   if (!text) return null
   return (
-    <div className="absolute left-1/2 flex -translate-x-1/2 flex-col items-center text-center" style={{ top: u(118) }}>
+    <div className="objective absolute left-1/2 flex -translate-x-1/2 flex-col items-center text-center" style={{ top: u(118) }}>
       <div className={hot ? 'bob' : ''}>
         <Fancy size={hot ? 26 : 32} from={hot ? '#ffe27a' : '#ffffff'} to={hot ? '#ff4a1c' : '#9fe6ff'}>
           {text}
@@ -159,7 +159,7 @@ export function BottomBar() {
   }, [selId, me.sel])
 
   return (
-    <div className="absolute bottom-0 left-1/2 flex -translate-x-1/2 flex-col items-center" style={{ paddingBottom: u(14), gap: u(6) }}>
+    <div className="bottom-bar absolute bottom-0 left-1/2 flex -translate-x-1/2 flex-col items-center" style={{ paddingBottom: u(14), gap: u(6) }}>
       {label?.text && (
         <div key={label.id} className="txt-o pop-in" style={{ fontSize: u(20) }}>
           {label.text}

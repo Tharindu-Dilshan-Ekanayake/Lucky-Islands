@@ -158,14 +158,14 @@ export default function TouchControls() {
           <div className="absolute" style={{ left: STICK - 28 + knob.dx, top: STICK - 28 + knob.dy, width: 56, height: 56, borderRadius: '50%', background: 'radial-gradient(circle at 35% 30%, #ffffff, #cfd8ff)', border: '3px solid rgba(13,10,24,0.6)', boxShadow: '0 4px 0 rgba(0,0,0,0.3)' }} />
         </div>
       ) : (
-        <div className="pointer-events-none absolute flex items-center justify-center" style={{ left: 28, bottom: 28, width: STICK * 2, height: STICK * 2, borderRadius: '50%', border: '3px dashed rgba(255,255,255,0.35)', background: 'rgba(255,255,255,0.06)' }}>
+        <div className="stick-ghost pointer-events-none absolute flex items-center justify-center" style={{ left: 28, bottom: 28, width: STICK * 2, height: STICK * 2, borderRadius: '50%', border: '3px dashed rgba(255,255,255,0.35)', background: 'rgba(255,255,255,0.06)' }}>
           <span className="txt-o" style={{ fontSize: u(14), opacity: 0.8 }}>
             MOVE
           </span>
         </div>
       )}
 
-      <div className="absolute" style={{ right: u(16), bottom: u(16), width: u(300), height: u(300) }}>
+      <div className="touch-cluster absolute" style={{ right: u(16), bottom: u(16), width: u(300), height: u(300) }}>
         {/* Jump: the biggest, under your thumb's resting spot. */}
         <button type="button" className={`tbtn absolute ${held.jump ? 'held' : ''}`} style={{ ...face(108, '74,160,60'), right: 0, bottom: 0 }} {...hold('jump')}>
           <GameIcon name="up" size={40} />

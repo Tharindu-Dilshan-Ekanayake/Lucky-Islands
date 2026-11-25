@@ -12,6 +12,7 @@ import {
   LAVA,
   lavaHeight,
   LOBBY_SWORD,
+  MAP_CHOICES,
   LUCKY_BONUS_BLOCKS,
   MELEE_REACH,
   MODE_IDS,
@@ -96,8 +97,8 @@ export class GameHost {
     this.lockedBots = null
     this.match = null
     this.lastMap = null
-    /** The maps on offer this round (three, never the last one played). */
-    this.mapOptions = MAP_IDS.slice(0, 3)
+    /** The maps on offer this round (MAP_CHOICES of them, never the last one played). */
+    this.mapOptions = MAP_IDS.slice(0, MAP_CHOICES)
     this.rosterDirty = true
     this.phaseDirty = true
     this.phaseSentAt = 0
@@ -430,14 +431,14 @@ export class GameHost {
     return pool[Math.floor(this.random() * pool.length)]
   }
 
-  /** Three different maps for the vote, leaving out the one just played. */
+  /** MAP_CHOICES different maps for the vote, leaving out the one just played. */
   rollMapOptions() {
     const pool = MAP_IDS.filter((id) => id !== this.lastMap)
     for (let i = pool.length - 1; i > 0; i -= 1) {
       const j = Math.floor(this.random() * (i + 1))
       ;[pool[i], pool[j]] = [pool[j], pool[i]]
     }
-    this.mapOptions = pool.slice(0, 3)
+    this.mapOptions = pool.slice(0, MAP_CHOICES)
   }
 
   mapVoteCounts() {

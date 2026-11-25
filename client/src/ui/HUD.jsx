@@ -77,7 +77,7 @@ function TopCenter() {
   }
 
   return (
-    <div className="absolute left-1/2 flex -translate-x-1/2 flex-col items-center" style={{ top: u(12), gap: u(8) }}>
+    <div className="top-center absolute left-1/2 flex -translate-x-1/2 flex-col items-center" style={{ top: u(12), gap: u(8) }}>
       {parts && (
         <div key={`${zone}:${phase.phase}`} className="drop-in flex items-baseline" style={{ gap: u(14) }}>
           {parts.map(([text, hot], i) => (

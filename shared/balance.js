@@ -297,6 +297,9 @@ export const QUESTS = {
 export const QUEST_IDS = Object.keys(QUESTS)
 export const QUESTS_PER_DAY = 3
 
+/** How many maps each map vote offers (random, never the one just played). */
+export const MAP_CHOICES = 6
+
 // --- Cosmetics and cases ----------------------------------------------------------------
 
 export const RARITIES = {

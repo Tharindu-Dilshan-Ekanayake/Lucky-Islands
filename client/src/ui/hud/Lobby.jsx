@@ -65,7 +65,7 @@ export function VoteCards({ phase }) {
     return (
       <div className="vote-panel pointer-events-auto mc-panel flex flex-col items-center" style={{ gap: u(10), marginTop: u(4), padding: `${u(10)} ${u(12)} ${u(12)}` }}>
         {step(1, 'PICK THE MODE')}
-        <div className="flex" style={{ gap: u(8) }}>
+        <div className="vote-row vote-modes" style={{ gap: u(8) }}>
           {MODE_IDS.map((id, i) => {
             const m = MODES[id]
             const mine = phase.myVote === id
@@ -136,15 +136,15 @@ export function VoteCards({ phase }) {
         </div>
       )}
       {step(2, 'PICK THE MAP')}
-      <div className="flex" style={{ gap: u(10) }}>
-        {(phase.mapOptions || MAP_IDS.slice(0, 3)).map((id, i) => {
+      <div className="vote-row vote-maps" style={{ gap: u(10) }}>
+        {(phase.mapOptions || MAP_IDS.slice(0, 6)).map((id, i) => {
           const mine = phase.myMapVote === id
           return (
             <button
               key={id}
               type="button"
               className={`mc-btn vote-card flex flex-col items-center text-center ${mine ? 'picked' : ''}`}
-              style={{ '--c': mine ? '#e0a21b' : '#4b5468', '--i': i, width: u(196), padding: u(6), gap: u(4) }}
+              style={{ '--c': mine ? '#e0a21b' : '#4b5468', '--i': i, width: u(176), padding: u(6), gap: u(4) }}
               onClick={() => actions.voteMap(id)}
             >
               <img src={`${import.meta.env.BASE_URL}maps/${id}.webp`} alt={MAPS[id].name} draggable={false} style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: u(10) }} />
