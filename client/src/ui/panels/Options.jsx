@@ -7,6 +7,7 @@ import { useGame } from '../../store/game'
 import { QUALITY_LEVELS, useQuality } from '../../store/quality'
 import { u } from '../format'
 import { Button } from '../kit'
+import { LANGUAGES, t } from '../i18n'
 
 /** Settings (graphics, sound, controls) and the bots-only private room. */
 
@@ -91,7 +92,7 @@ export function SettingsPanel() {
     <div className="flex flex-col">
       <div className="flex flex-col" style={{ gap: u(8), paddingBottom: u(10), marginBottom: u(6), borderBottom: `${u(3)} solid rgba(255,255,255,0.12)` }}>
         <span className="txt-o" style={{ fontSize: u(22), fontWeight: 700 }}>
-          GRAPHICS
+          {t('GRAPHICS')}
         </span>
         <div className="grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: u(8) }}>
           {QUALITY_LEVELS.map((l) => {
@@ -119,16 +120,26 @@ export function SettingsPanel() {
           {manual ? 'Your choice is saved on this device.' : 'Picked for your device. If the game slows down it lowers this by itself.'}
         </span>
       </div>
-      {row(`Mouse / touch sensitivity ${settings.sensitivity.toFixed(1)}`, slider('sensitivity', 0.3, 2.5, 0.1))}
-      {row(`Field of view ${settings.fov}`, slider('fov', 60, 100, 1))}
       {row(
-        'Invert look up/down',
+        t('Language'),
+        <div className="flex" style={{ gap: u(6) }}>
+          {LANGUAGES.map((l) => (
+            <Button key={l.id} color={settings.lang === l.id ? '#4a8f2c' : '#4b5563'} style={{ padding: `${u(4)} ${u(14)}`, fontSize: u(16) }} onClick={() => setSetting('lang', l.id)}>
+              {l.name}
+            </Button>
+          ))}
+        </div>,
+      )}
+      {row(t('Mouse / touch sensitivity {n}', { n: settings.sensitivity.toFixed(1) }), slider('sensitivity', 0.3, 2.5, 0.1))}
+      {row(t('Field of view {n}', { n: settings.fov }), slider('fov', 60, 100, 1))}
+      {row(
+        t('Invert look up/down'),
         <Button color={settings.invertY ? '#4a8f2c' : '#4b5563'} style={{ padding: `${u(4)} ${u(14)}`, fontSize: u(16) }} onClick={() => setSetting('invertY', !settings.invertY)}>
           {settings.invertY ? 'ON' : 'OFF'}
         </Button>,
       )}
       {row(
-        'Camera in rounds',
+        t('Camera in rounds'),
         <Button
           color="#4b5563"
           style={{ padding: `${u(4)} ${u(14)}`, fontSize: u(16) }}
@@ -141,7 +152,7 @@ export function SettingsPanel() {
         </Button>,
       )}
       {row(
-        'Sound',
+        t('Sound'),
         <Button
           color={muted ? '#d8443a' : '#4a8f2c'}
           style={{ padding: `${u(4)} ${u(14)}`, fontSize: u(16) }}
@@ -150,7 +161,7 @@ export function SettingsPanel() {
             setMutedState(!muted)
           }}
         >
-          {muted ? 'MUTED' : 'ON'}
+          {muted ? t('MUTED') : 'ON'}
         </Button>,
       )}
       <div className="txt-o" style={{ fontSize: u(14), color: '#bdb3e0', marginTop: u(8) }}>

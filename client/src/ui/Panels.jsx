@@ -4,6 +4,7 @@ import { Button, Fancy } from './kit'
 import { BackpackPanel, CaseOpening, CasesPanel } from './panels/Cosmetics'
 import { DailyPanel, LeaderboardsPanel, QuestsPanel, ShopPanel } from './panels/Progress'
 import { BotsPanel, SettingsPanel } from './panels/Options'
+import { t } from './i18n'
 
 /**
  * The lobby's panels (cases, backpack, shop, daily reward, leaderboards, settings) and
@@ -30,7 +31,7 @@ function PanelBody({ panel }) {
       <div className="mc-panel pop-in relative flex flex-col text-white" style={{ width: `min(94vw, ${u(820)})`, maxHeight: '88vh', padding: u(18), gap: u(12) }}>
         <div className="flex items-center justify-between">
           <Fancy size={32} from="#ffffff" to="#ffd23b">
-            {titles[panel]}
+            {t(titles[panel])}
           </Fancy>
           <Button color="#d8443a" style={{ width: u(46), height: u(46), fontSize: u(24) }} onClick={close}>
             ✕

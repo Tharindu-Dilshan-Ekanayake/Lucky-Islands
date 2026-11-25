@@ -4,6 +4,7 @@ import { requestPointerLock } from '../game/input'
 import { runtime } from '../game/runtime'
 import { useGame } from '../store/game'
 import { u } from './format'
+import { t } from './i18n'
 
 /**
  * Desktop: clicking the 3D view captures the mouse (Esc lets it go, for the menus).
@@ -29,7 +30,7 @@ export default function ClickToPlay() {
   return (
     <div className="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 text-center" style={{ top: '62%' }}>
       <div className="mc-panel txt-o" style={{ padding: `${u(8)} ${u(18)}`, fontSize: u(20), opacity: 0.92 }}>
-        {zone === 'match' ? 'CLICK TO PLAY' : 'CLICK TO LOOK AROUND'}
+        {zone === 'match' ? t('CLICK TO PLAY') : t('CLICK TO LOOK AROUND')}
         <div style={{ fontSize: u(14), color: '#cfc6ee', marginTop: u(4) }}>
           WASD move · Space jump · Shift sneak · {zone === 'match' ? 'L-click break/hit · R-click place/use' : 'E open cases · Esc menu'}
         </div>

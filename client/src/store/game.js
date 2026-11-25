@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 
 import { createProfile, createSession } from '@shared/logic'
+import { defaultLanguage } from '../ui/i18n'
 
 /**
  * Everything the UI renders from. Written by the network layer and a few slow timers -
@@ -8,7 +9,7 @@ import { createProfile, createSession } from '@shared/logic'
  */
 
 const SETTINGS_KEY = 'lsb.settings'
-const DEFAULT_SETTINGS = { sensitivity: 1, fov: 75, invertY: false, camera: 'first', showFps: false }
+const DEFAULT_SETTINGS = { sensitivity: 1, fov: 75, invertY: false, camera: 'first', showFps: false, lang: defaultLanguage() }
 
 function readSettings() {
   try {

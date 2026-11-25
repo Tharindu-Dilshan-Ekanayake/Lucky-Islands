@@ -8,6 +8,7 @@ import { actions } from '../../net/actions'
 import { useGame } from '../../store/game'
 import { u } from '../format'
 import { Button, Fancy } from '../kit'
+import { t } from '../i18n'
 
 /** Earning and showing off: the shop, the daily reward, level and quests, the leaderboards. */
 
@@ -123,7 +124,7 @@ export function QuestsPanel() {
       <div className="slot flex items-center" style={{ padding: u(12), gap: u(14) }}>
         <div className="flex flex-col items-center" style={{ minWidth: u(80) }}>
           <span className="txt-o" style={{ fontSize: u(13), color: '#d9ccff' }}>
-            LEVEL
+            {t('LEVEL')}
           </span>
           <Fancy size={40} from="#fff7b0" to="#ffb21a">
             {String(level)}
@@ -134,7 +135,7 @@ export function QuestsPanel() {
             <span>
               {xp} / {need} XP
             </span>
-            <span style={{ color: '#7cff6b' }}>Next level: +${levelCash(level + 1)}</span>
+            <span style={{ color: '#7cff6b' }}>{t('Next level: +${cash}', { cash: levelCash(level + 1) })}</span>
           </div>
           <div style={{ height: u(16), borderRadius: u(8), background: 'rgba(0,0,0,0.45)', overflow: 'hidden' }}>
             <div className="xp-fill" style={{ width: `${Math.min(100, (xp / need) * 100)}%`, height: '100%', background: 'linear-gradient(90deg, #7cf0ff, #5f8bff)' }} />
@@ -145,7 +146,7 @@ export function QuestsPanel() {
         </div>
       </div>
       <Fancy size={22} from="#ffffff" to="#ffc28a">
-        TODAY'S QUESTS
+        {t("TODAY'S QUESTS")}
       </Fancy>
       {quests.map((q) => {
         const def = QUESTS[q.id]
@@ -155,7 +156,7 @@ export function QuestsPanel() {
             <span style={{ fontSize: u(26), width: u(32), textAlign: 'center' }}>{q.done ? '✔' : '★'}</span>
             <div className="flex flex-1 flex-col" style={{ gap: u(4) }}>
               <span className="txt-o" style={{ fontSize: u(17), fontWeight: 700 }}>
-                {def.name}
+                {t(def.name)}
               </span>
               <div style={{ height: u(10), borderRadius: u(5), background: 'rgba(0,0,0,0.45)', overflow: 'hidden' }}>
                 <div className="xp-fill" style={{ width: `${(q.progress / def.goal) * 100}%`, height: '100%', background: q.done ? '#7cff6b' : 'linear-gradient(90deg, #ffd23b, #ff8a3c)' }} />
@@ -173,7 +174,7 @@ export function QuestsPanel() {
         )
       })}
       <span className="txt-o" style={{ fontSize: u(13), color: '#bdb3e0', textAlign: 'center' }}>
-        New quests every day. Rewards are paid the moment a quest is done.
+        {t('New quests every day. Rewards are paid the moment a quest is done.')}
       </span>
     </div>
   )

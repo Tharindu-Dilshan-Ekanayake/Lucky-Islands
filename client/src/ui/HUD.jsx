@@ -8,6 +8,7 @@ import { Button, Fancy } from './kit'
 import { BigCount, BottomBar, Crosshair, LootPopup, Objective, SpectateBar, TeamChip } from './hud/Round'
 import { KillFeed, LevelUpBanner, NameTag, NetBadge, QuickChat, SettingsButton, Toasts } from './hud/Corner'
 import { LobbyMenu, PlayerCount, StationPrompt, VoteCards, Wallet, WelcomeGift } from './hud/Lobby'
+import { t } from './i18n'
 
 /**
  * The heads-up display: round clock and players left, the objective, hearts, hotbar,
@@ -62,20 +63,20 @@ function TopCenter() {
   let bar = null
   if (zone !== 'lobby') {
     if (phase.phase === 'cages') {
-      parts = [['CAGES OPEN IN '], [String(Math.ceil(left / 1000)), true]]
-      sub = MODES[phase.mode]?.name ? `${MODES[phase.mode].name} · ${MAPS[phase.map]?.name || ''}` : null
+      parts = [[t('CAGES OPEN IN')], [String(Math.ceil(left / 1000)), true]]
+      sub = MODES[phase.mode]?.name ? `${t(MODES[phase.mode].name)} · ${t(MAPS[phase.map]?.name || '')}` : null
     } else if (phase.phase === 'fight') {
       const teams = phase.teamSize > 1
-      parts = [[`${teams ? phase.teamsLeft : phase.alive}`, true], [teams ? ' TEAMS LEFT  ' : ' PLAYERS LEFT  '], [formatClock(left), true]]
+      parts = [[`${teams ? phase.teamsLeft : phase.alive}`, true], [teams ? t('TEAMS LEFT') : t('PLAYERS LEFT')], [formatClock(left), true]]
       bar = left / ROUND.fightMs
-    } else if (phase.phase === 'ended') parts = [['ROUND OVER']]
+    } else if (phase.phase === 'ended') parts = [[t('ROUND OVER')]]
   } else if (phase.phase === 'intermission') {
-    parts = [['ROUND STARTS IN '], [formatClock(left), true]]
+    parts = [[t('ROUND STARTS IN')], [formatClock(left), true]]
   } else if (phase.phase === 'waiting') {
-    parts = [[phase.afk ? 'YOU ARE AFK' : 'WAITING FOR PLAYERS...']]
-    sub = phase.afk ? 'Turn AFK off to join the next round' : null
+    parts = [[phase.afk ? t('YOU ARE AFK') : t('WAITING FOR PLAYERS...')]]
+    sub = phase.afk ? t('Turn AFK off to join the next round') : null
   } else {
-    parts = [['ROUND IN PROGRESS · '], [`${phase.alive}`, true], [' LEFT']]
+    parts = [[t('ROUND IN PROGRESS ·')], [`${phase.alive}`, true], [t('LEFT')]]
   }
 
   return (
@@ -106,11 +107,11 @@ function TopCenter() {
         <div className="pointer-events-auto flex" style={{ gap: u(10) }}>
           {phase.canJoin && (
             <Button color="#3fae4a" style={{ padding: `${u(8)} ${u(26)}`, fontSize: u(22) }} onClick={() => actions.joinRound()}>
-              JOIN ROUND
+              {t('JOIN ROUND')}
             </Button>
           )}
           <Button color="#3a6fd8" style={{ padding: `${u(8)} ${u(26)}`, fontSize: u(22) }} onClick={() => actions.spectate()}>
-            SPECTATE
+            {t('SPECTATE')}
           </Button>
         </div>
       )}

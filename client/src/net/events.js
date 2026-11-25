@@ -10,6 +10,7 @@ import { getGame } from '../store/game'
 import { showHit } from '../ui/juice'
 import { showQuickChat } from './quickChat'
 import { applyRoster, applySnapshot, clearRemotes } from './remotes'
+import { t } from '../ui/i18n'
 
 /**
  * Everything the authority (online room or offline host) tells this client, turned
@@ -90,12 +91,12 @@ export function handleServerEvent(type, p = {}) {
       if (p.phase !== lastPhase) {
         if (p.phase === 'fight' && lastPhase === 'cages' && runtime.zone === 'match') {
           sfx.cagesOpen()
-          game.showToast('GO! Break your lucky blocks!', 'success')
+          game.showToast(t('GO! Break your lucky blocks!'), 'success')
         }
         if (p.phase === 'cages' && runtime.zone === 'match') {
           game.setResult(null)
           game.setRoundReward(null)
-          game.showToast(`${MODES[p.mode]?.name || 'Classic'} on ${MAPS[p.map]?.name || 'the islands'}!`, 'info')
+          game.showToast(t('{mode} on {map}!', { mode: t(MODES[p.mode]?.name || 'Solo'), map: t(MAPS[p.map]?.name || 'the islands') }), 'info')
         }
         if (p.phase === 'intermission' && lastPhase !== 'intermission') sfx.tick()
         lastPhase = p.phase
@@ -275,7 +276,7 @@ export function handleServerEvent(type, p = {}) {
       return
     case 'toast':
       if (p.kind === 'error') sfx.error()
-      game.showToast(p.text, p.kind || 'info')
+      game.showToast(t(p.text), p.kind || 'info')
       return
     case 'leaderboards':
       game.setLeaderboards(p)

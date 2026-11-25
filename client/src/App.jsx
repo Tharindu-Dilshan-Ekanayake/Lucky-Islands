@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import { Fragment, Suspense, lazy, useCallback, useEffect, useState } from 'react'
 
 import GameController from './GameController'
 import GameScene from './game/GameScene'
@@ -16,6 +16,7 @@ const loadPanels = () => import('./ui/Panels')
 const Panels = lazy(loadPanels)
 
 function App() {
+  const lang = useGame((st) => st.settings.lang)
   const [ready, setReady] = useState(false)
   const handleReady = useCallback(() => {
     setReady(true)
@@ -37,7 +38,7 @@ function App() {
       <div id="hurt-vignette" />
       <div className="screen-vignette" />
       {ready && (
-        <>
+        <Fragment key={lang}>
           <HUD />
           <ResultOverlay />
           <ClickToPlay />
@@ -45,7 +46,7 @@ function App() {
           <Suspense fallback={null}>
             <Panels />
           </Suspense>
-        </>
+        </Fragment>
       )}
       <ReplacedOverlay />
       <LoadingScreen done={ready} />

@@ -5,6 +5,7 @@ import { actions } from '../net/actions'
 import { useGame } from '../store/game'
 import { u, useCountUp } from './format'
 import { Button, Fancy } from './kit'
+import { t } from './i18n'
 
 const HOW = {
   lava: 'You melted in the lava',
@@ -37,7 +38,7 @@ export default function ResultOverlay() {
     return (
       <div className="pointer-events-none absolute left-1/2 z-20 -translate-x-1/2 text-center" style={{ top: u(220) }}>
         <div className="pop-in">
-          <Fancy size={44} from="#fff7b0" to="#ffb21a">{`${result.winner} WINS!`}</Fancy>
+          <Fancy size={44} from="#fff7b0" to="#ffb21a">{t('{name} WINS!', { name: result.winner })}</Fancy>
         </div>
       </div>
     )
@@ -49,7 +50,7 @@ export default function ResultOverlay() {
       <div className="mc-panel pop-in flex flex-col items-center text-center" style={{ padding: `${u(22)} ${u(36)}`, gap: u(10), minWidth: u(420) }}>
         <div className={win ? 'victory-title' : 'shake-in'}>
           <Fancy size={56} from={win ? '#fff7b0' : '#ffd0c4'} to={win ? '#ffb21a' : '#ff3a2a'}>
-            {win ? 'VICTORY!' : 'ELIMINATED'}
+            {win ? t('VICTORY!') : t('ELIMINATED')}
           </Fancy>
         </div>
         {dead && (
@@ -84,16 +85,16 @@ export default function ResultOverlay() {
         {dead && (
           <div className="flex" style={{ gap: u(12), marginTop: u(8) }}>
             <Button color="#3a6fd8" style={{ padding: `${u(8)} ${u(22)}`, fontSize: u(20) }} onClick={() => setHiddenFor(result)}>
-              SPECTATE
+              {t('SPECTATE')}
             </Button>
             <Button color="#4a8f2c" style={{ padding: `${u(8)} ${u(22)}`, fontSize: u(20) }} onClick={() => actions.toLobby()}>
-              LOBBY
+              {t('LOBBY')}
             </Button>
           </div>
         )}
         {win && (
           <div className="txt-o" style={{ fontSize: u(16), color: '#cfc6ee' }}>
-            Back to the lobby in a moment…
+            {t('Back to the lobby in a moment…')}
           </div>
         )}
       </div>

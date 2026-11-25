@@ -7,6 +7,7 @@ import { useGame } from '../../store/game'
 import { u } from '../format'
 import GameIcon from '../GameIcon'
 import { Button, Fancy } from '../kit'
+import { t } from '../i18n'
 
 /** The corners and overlays shown everywhere: settings, quick chat, your name tag, the feed, toasts, level-ups. */
 
@@ -136,10 +137,10 @@ export function LevelUpBanner() {
       style={{ top: '14%', padding: `${u(24)} ${u(70)}`, background: 'radial-gradient(ellipse at center, rgba(13,10,24,0.82) 0%, rgba(13,10,24,0.55) 45%, rgba(13,10,24,0) 72%)' }}
     >
       <Fancy size={52} from="#fff7b0" to="#ffb21a">
-        LEVEL UP!
+        {t('LEVEL UP!')}
       </Fancy>
       <Fancy size={34} from="#e4fbff" to="#5fb8ff">
-        {`LEVEL ${top.level}`}
+        {t('LEVEL {n}', { n: top.level })}
       </Fancy>
       <span className="txt-o" style={{ fontSize: u(20), color: '#7cff6b', fontWeight: 700 }}>
         +${cash}

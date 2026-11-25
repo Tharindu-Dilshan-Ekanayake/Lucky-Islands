@@ -11,18 +11,19 @@ import { switchLobby } from '../../net/connection'
 import { useGame } from '../../store/game'
 import { formatCash, u, useCountUp, useNow } from '../format'
 import { Button, Fancy } from '../kit'
+import { t } from '../i18n'
 
 /** The lobby HUD: the vote, server fill, the menu, wallet and case prompt, the welcome gift. */
 
 /** How full this server is (rounds always fill up to 8 with bots). */
 export function PlayerCount() {
   const net = useGame((s) => s.net)
-  let text = 'OFFLINE - PLAYING WITH BOTS'
-  if (net.mode === 'online') text = net.isPrivate ? `PRIVATE ROOM ${net.code || ''} · ${net.players}/${net.maxPlayers} PLAYERS` : `${net.players}/${net.maxPlayers} PLAYERS IN THIS SERVER`
+  let text = t('OFFLINE - PLAYING WITH BOTS')
+  if (net.mode === 'online') text = net.isPrivate ? t('PRIVATE ROOM {code} · {n}/{max} PLAYERS', { code: net.code || '', n: net.players, max: net.maxPlayers }) : t('{n}/{max} PLAYERS IN THIS SERVER', { n: net.players, max: net.maxPlayers })
   return (
     <div className="flex items-center" style={{ gap: u(10) }}>
       <span className="txt-o" style={{ fontSize: u(14), color: '#bfe8ff' }}>
-        {text} · 8 FIGHT EVERY ROUND
+        {text} · {t('8 FIGHT EVERY ROUND')}
       </span>
       {net.mode === 'online' && net.isPrivate && (
         <Button className="pointer-events-auto" color="#3a6fd8" style={{ padding: `${u(2)} ${u(10)}`, fontSize: u(13) }} onClick={() => switchLobby({ mode: 'public' })}>
@@ -41,16 +42,16 @@ export function PlayerCount() {
  */
 export function VoteCards({ phase }) {
   const now = useNow(250)
-  const label = (n) => `${n || 0} VOTE${n === 1 ? '' : 'S'}`
+  const label = (n) => t(n === 1 ? '{n} VOTE' : '{n} VOTES', { n: n || 0 })
   const modeStep = phase.voteStage !== 'map'
   const stageLeft = Math.max(0, (phase.stageEndsAt || 0) - now)
   const step = (n, text) => (
     <div className="flex items-center" style={{ gap: u(10) }}>
       <span className="chip" style={{ fontSize: u(13), color: '#ffd23b' }}>
-        STEP {n}/2
+        {t('STEP {n}/2', { n })}
       </span>
       <Fancy size={22} from="#ffffff" to="#c9b8ff">
-        {text}
+        {t(text)}
       </Fancy>
       {phase.phase === 'intermission' && (
         <span className="chip" style={{ fontSize: u(15), color: '#ffd23b' }}>
@@ -77,10 +78,10 @@ export function VoteCards({ phase }) {
                 onClick={() => actions.vote(id)}
               >
                 <span className="txt-o" style={{ fontSize: u(19), fontWeight: 700 }}>
-                  {m.name}
+                  {t(m.name)}
                 </span>
                 <span className="txt-o" style={{ fontSize: u(12), lineHeight: 1.2, minHeight: u(56), opacity: 0.95, fontWeight: 500 }}>
-                  {m.blurb}
+                  {t(m.blurb)}
                 </span>
                 <span key={phase.votes?.[id] || 0} className="vote-count bump">
                   {label(phase.votes?.[id])}
@@ -91,7 +92,7 @@ export function VoteCards({ phase }) {
         </div>
         <div className="flex items-center" style={{ gap: u(8) }}>
           <span className="txt-o" style={{ fontSize: u(16), color: '#d9ccff', fontWeight: 700 }}>
-            BOTS
+            {t('BOTS')}
           </span>
           {BOT_LEVEL_IDS.map((id) => {
             const lv = BOT_LEVELS[id]
@@ -104,13 +105,13 @@ export function VoteCards({ phase }) {
                 style={{ '--c': mine ? lv.color : '#4b5468', padding: `${u(4)} ${u(14)}`, fontSize: u(15) }}
                 onClick={() => actions.voteBots(id)}
               >
-                {lv.name} · {phase.botVotes?.[id] || 0}
+                {t(lv.name)} · {phase.botVotes?.[id] || 0}
               </button>
             )
           })}
         </div>
         <span className="txt-o" style={{ fontSize: u(13), color: '#bdb3e0', fontWeight: 500 }}>
-          Most votes wins - then everyone picks the map, and the round begins
+          {t('Most votes wins - then everyone picks the map, and the round begins')}
         </span>
       </div>
     )
@@ -122,14 +123,14 @@ export function VoteCards({ phase }) {
       {chosen && (
         <div className="flex items-center" style={{ gap: u(10) }}>
           <span className="txt-o" style={{ fontSize: u(13), color: '#bdb3e0' }}>
-            MODE
+            {t('MODE')}
           </span>
           <span className="chip" style={{ fontSize: u(18), background: chosen.color, color: '#fff', fontWeight: 700 }}>
-            {chosen.name}
+            {t(chosen.name)}
           </span>
           {phase.chosenBots && (
             <span className="chip" style={{ fontSize: u(14), color: BOT_LEVELS[phase.chosenBots]?.color }}>
-              {phase.chosenBots === 'off' ? 'NO BOTS' : `${BOT_LEVELS[phase.chosenBots]?.name} bots`}
+              {phase.chosenBots === 'off' ? t('NO BOTS') : t('{name} bots', { name: t(BOT_LEVELS[phase.chosenBots]?.name) })}
             </span>
           )}
         </div>
@@ -148,7 +149,7 @@ export function VoteCards({ phase }) {
             >
               <img src={`${import.meta.env.BASE_URL}maps/${id}.webp`} alt={MAPS[id].name} draggable={false} style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: u(10) }} />
               <span className="txt-o" style={{ fontSize: u(17), fontWeight: 700, lineHeight: 1.1 }}>
-                {MAPS[id].name}
+                {t(MAPS[id].name)}
               </span>
               <span key={phase.mapVotes?.[id] || 0} className="vote-count bump">
                 {label(phase.mapVotes?.[id])}
@@ -186,14 +187,14 @@ export function LobbyMenu() {
   }
   return (
     <div className="lobby-menu pointer-events-auto absolute" style={{ left: u(14), gap: u(12) }}>
-      <MenuButton label="SHOP" color="#e0a21b" onClick={() => go('shop')} />
-      <MenuButton label="CASES" color="#c25cff" onClick={() => go('cases', { caseId: 'cape' })} />
-      <MenuButton label="BACKPACK" color="#b0633a" onClick={() => go('backpack')} />
-      <MenuButton label="DAILY" color="#3fa2ff" badge={dailyReady} onClick={() => go('daily')} />
-      <MenuButton label="QUESTS" color="#e0702b" onClick={() => go('quests')} />
-      <MenuButton label="TOP" color="#2bb3a3" onClick={() => go('leaderboards')} />
-      <MenuButton label="BOTS ONLY" color="#7a5cd8" onClick={() => go('bots')} />
-      <MenuButton label={afk ? 'AFK: ON' : 'AFK: OFF'} color={afk ? '#d8443a' : '#4b5563'} onClick={() => actions.afk(!afk)} />
+      <MenuButton label={t('SHOP')} color="#e0a21b" onClick={() => go('shop')} />
+      <MenuButton label={t('CASES')} color="#c25cff" onClick={() => go('cases', { caseId: 'cape' })} />
+      <MenuButton label={t('BACKPACK')} color="#b0633a" onClick={() => go('backpack')} />
+      <MenuButton label={t('DAILY')} color="#3fa2ff" badge={dailyReady} onClick={() => go('daily')} />
+      <MenuButton label={t('QUESTS')} color="#e0702b" onClick={() => go('quests')} />
+      <MenuButton label={t('TOP')} color="#2bb3a3" onClick={() => go('leaderboards')} />
+      <MenuButton label={t('BOTS ONLY')} color="#7a5cd8" onClick={() => go('bots')} />
+      <MenuButton label={afk ? t('AFK: ON') : t('AFK: OFF')} color={afk ? '#d8443a' : '#4b5563'} onClick={() => actions.afk(!afk)} />
     </div>
   )
 }

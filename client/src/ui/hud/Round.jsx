@@ -9,6 +9,7 @@ import { actions } from '../../net/actions'
 import { useGame } from '../../store/game'
 import { u, useNow } from '../format'
 import { Button, Fancy, Hearts } from '../kit'
+import { t } from '../i18n'
 
 /** The HUD in a round (and while spectating): countdown, objective, crosshair, hearts and hotbar, loot, team. */
 
@@ -21,12 +22,13 @@ export function BigCount() {
     const n = Math.ceil((phase.endsAt - now) / 1000)
     if (n >= 1 && n <= 3) text = String(n)
   } else if (phase.phase === 'fight' && ROUND.fightMs - (phase.endsAt - now) < 1000) text = 'GO!'
+  const shown = text === 'GO!' ? t('GO!') : text
   if (!text) return null
   const go = text === 'GO!'
   return (
     <div key={text} className={`big-count absolute left-1/2 top-1/2 ${go ? 'big-go' : ''}`}>
       <Fancy size={go ? 120 : 140} from={go ? '#d8ffb0' : '#ffffff'} to={go ? '#3fdc4a' : '#ffc21a'}>
-        {text}
+        {shown}
       </Fancy>
     </div>
   )
@@ -74,11 +76,11 @@ export function Objective() {
       ['4/5 HIT SOMEONE', touch ? 'Pick your best sword, aim at a player and tap HIT' : 'Pick your best sword, aim at a player and left click'],
       ['5/5 THE LAVA WILL RISE', touch ? 'Stay high: look down, JUMP and PLACE to build a pillar' : 'Stay high: look down, jump and right click to build a pillar'],
     ]
-    ;[text, sub] = steps[step]
+    ;[text, sub] = steps[step].map((x) => t(x))
   } else if (phase.phase === 'fight') {
     const elapsed = ROUND.fightMs - Math.max(0, phase.endsAt - now)
     if (lavaHeight(elapsed, phase.mode) > LAVA.startY + 0.05) {
-      text = 'THE LAVA IS RISING!'
+      text = t('THE LAVA IS RISING!')
       hot = true
     }
   }
@@ -130,7 +132,7 @@ function KillBanner() {
         </Fancy>
       )}
       <Fancy size={26} from="#ffd0c4" to="#ff3a2a">
-        ELIMINATED
+        {t('ELIMINATED')}
       </Fancy>
       <span className="txt-o" style={{ fontSize: u(20), fontWeight: 700 }}>
         {banner.name}
