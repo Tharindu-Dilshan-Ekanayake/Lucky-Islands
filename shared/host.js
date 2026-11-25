@@ -233,7 +233,7 @@ export class GameHost {
       case 'joinRound':
         return this.joinRound(ent)
       case 'voteBots':
-        if (BOT_LEVELS[p.level] && (this.phase === 'waiting' || (this.phase === 'intermission' && this.voteStage === 'mode'))) {
+        if (BOT_LEVELS[p.level] && (this.phase === 'waiting' || (this.phase === 'intermission' && this.voteStage !== 'map'))) {
           member.botVote = p.level
           this.phaseDirty = true
         }
@@ -266,7 +266,7 @@ export class GameHost {
         }
         return
       case 'vote':
-        if (MODES[p.mode] && (this.phase === 'waiting' || (this.phase === 'intermission' && this.voteStage === 'mode'))) {
+        if (MODES[p.mode] && (this.phase === 'waiting' || (this.phase === 'intermission' && this.voteStage !== 'map'))) {
           member.vote = p.mode
           this.phaseDirty = true
         }
@@ -373,11 +373,22 @@ export class GameHost {
   maybeStartIntermission(ms = ROUND.intermissionMs) {
     if (this.phase !== 'waiting') return
     if (!this.eligibleMembers().length) return
-    this.setPhase('intermission', ms)
-    this.voteStage = 'mode'
-    this.stageEnds = this.phaseEnds - ROUND.mapVoteMs
+    // The countdown first (shorter if `ms` asks for less), then the two votes.
+    const wait = Math.max(0, ms - ROUND.modeVoteMs - ROUND.mapVoteMs)
+    this.setPhase('intermission', wait)
+    this.voteStage = wait > 0 ? 'wait' : 'mode'
+    this.stageEnds = wait > 0 ? this.phaseEnds : this.now() + ROUND.modeVoteMs
+    this.phaseEnds = this.stageEnds
     this.lockedMode = null
     this.lockedBots = null
+  }
+
+  /** The countdown is over: the mode (and bots) vote opens. */
+  openModeVote() {
+    this.voteStage = 'mode'
+    this.stageEnds = this.now() + ROUND.modeVoteMs
+    this.phaseEnds = this.stageEnds
+    this.phaseDirty = true
   }
 
   /** Step one is over: the mode (and bots) are decided, the map vote opens. */
@@ -406,7 +417,8 @@ export class GameHost {
       else {
         // Each step ends when its time is up - or as soon as everyone has voted. Once the
         // map is decided, the round starts.
-        if (this.voteStage === 'mode' && (now >= this.stageEnds || voters.every((m) => m.vote))) this.lockMode()
+        if (this.voteStage === 'wait' && now >= this.stageEnds) this.openModeVote()
+        else if (this.voteStage === 'mode' && (now >= this.stageEnds || voters.every((m) => m.vote))) this.lockMode()
         else if (this.voteStage === 'map' && (now >= this.stageEnds || voters.every((m) => m.mapVote))) this.startMatch()
       }
     } else if (this.phase === 'cages') {
@@ -474,10 +486,10 @@ export class GameHost {
     this.lockedMode = null
     this.lockedBots = null
     this.voteStage = 'mode'
-    // A no-bots round needs two people; alone, easy bots join in.
+    // A no-bots round needs two people; alone, (Medium) bots join in.
     if (botLevel === 'off' && humans.length < 2) {
-      botLevel = 'easy'
-      this.toZone('lobby', 'toast', { text: 'No-bots rounds need 2 players - easy bots join in!' })
+      botLevel = 'normal'
+      this.toZone('lobby', 'toast', { text: 'No-bots rounds need 2 players - bots join in!' })
     }
     this.lastMap = mapId
     const seed = Math.floor(this.random() * 2 ** 31)

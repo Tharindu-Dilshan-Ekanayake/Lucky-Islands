@@ -30,7 +30,7 @@ function makeHost(seed = 1) {
     }
   }
   /** Ticks until `pred()` holds (at most `ms`). */
-  const until = (pred, ms = 60_000) => {
+  const until = (pred, ms = 120_000) => {
     for (let i = 0; i < ms && !pred(); i += 50) {
       t += 50
       host.tick(0.05)
@@ -243,6 +243,19 @@ test('the lobby votes on the mode first, then the map, and everyone holds a swor
   advance(100)
   const snap = last(sent.get('a'), 'snap')
   assert.equal(snap.e[7], ITEM_IDS.indexOf('diamond_sword'))
+  // First a countdown: votes made now count, but the vote only closes once it's over.
+  assert.equal(last(sent.get('a'), 'phase').voteStage, 'wait')
+  host.message('a', 'vote', { mode: 'classic' })
+  host.message('b', 'vote', { mode: 'classic' })
+  advance(1000)
+  assert.equal(last(sent.get('a'), 'phase').voteStage, 'wait', 'the countdown always runs out')
+  advance(ROUND.waitMs)
+  assert.equal(last(sent.get('a'), 'phase').voteStage, 'map', 'everyone had voted: straight to the map')
+  // A new round to try the mode step itself.
+  host.lockedMode = null
+  host.voteStage = 'mode'
+  host.stageEnds = host.now() + ROUND.modeVoteMs
+  for (const m of host.members.values()) m.vote = null
   // Map votes wait for step two.
   host.message('a', 'voteMap', { map: 'candy' })
   assert.equal(host.members.get('a').mapVote, null)

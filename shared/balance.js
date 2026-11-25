@@ -9,12 +9,17 @@ import { B } from './voxel.js'
 // --- The round ------------------------------------------------------------------------
 
 export const ROUND = {
-  /** Lobby time before a round: the mode vote, then the map vote (each ends early once everyone has voted). */
-  intermissionMs: 22_000,
-  /** Shorter countdown once a round has just ended and everyone is already here. */
-  intermissionAfterMs: 22_000,
-  /** The second step of the vote (the map); the mode vote gets the rest. */
-  mapVoteMs: 10_000,
+  /**
+   * Lobby time before a round, in three steps: a countdown (`waitMs`), the mode vote
+   * (`modeVoteMs`), then the map vote (`mapVoteMs`). A vote step ends early once
+   * everyone has voted; the countdown always runs out.
+   */
+  waitMs: 30_000,
+  modeVoteMs: 15_000,
+  mapVoteMs: 15_000,
+  intermissionMs: 60_000,
+  /** The same after a round, when everyone comes back to the lobby. */
+  intermissionAfterMs: 60_000,
   /** In the glass cages above your island before they open. */
   cagesMs: 5_000,
   /** Longest a round can last; the lava ends it before then. */
@@ -133,7 +138,7 @@ export const MODES = {
 export const BOT_LEVELS = {
   off: { name: 'No bots', skill: [0.5, 0.85], damage: 0.8, reaction: 1, color: '#8b84a8' },
   easy: { name: 'Easy', skill: [0.3, 0.5], damage: 0.6, reaction: 1.6, color: '#5ee26a' },
-  normal: { name: 'Normal', skill: [0.5, 0.85], damage: 0.8, reaction: 1, color: '#f6b52d' },
+  normal: { name: 'Medium', skill: [0.5, 0.85], damage: 0.8, reaction: 1, color: '#f6b52d' },
   hard: { name: 'Hard', skill: [0.8, 0.98], damage: 1, reaction: 0.6, color: '#ff5a4a' },
 }
 export const BOT_LEVEL_IDS = Object.keys(BOT_LEVELS)

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
-import { BOT_LEVEL_IDS, BOT_LEVELS, CASES, MODES, MODE_IDS } from '@shared/balance'
+import { BOT_LEVELS, CASES, MODES, MODE_IDS } from '@shared/balance'
 import { MAP_IDS, MAPS } from '@shared/maps'
 import { dailyStatus } from '@shared/logic'
 
@@ -94,24 +94,26 @@ export function VoteCards({ phase }) {
           <span className="txt-o" style={{ fontSize: u(16), color: '#d9ccff', fontWeight: 700 }}>
             {t('BOTS')}
           </span>
-          {BOT_LEVEL_IDS.map((id) => {
-            const lv = BOT_LEVELS[id]
+          {[
+            ['normal', 'WITH BOTS', '#3fae4a'],
+            ['off', 'NO BOTS', '#d8443a'],
+          ].map(([id, label, color]) => {
             const mine = phase.myBotVote === id
             return (
               <button
                 key={id}
                 type="button"
                 className={`mc-btn txt-o ${mine ? 'picked' : ''}`}
-                style={{ '--c': mine ? lv.color : '#4b5468', padding: `${u(4)} ${u(14)}`, fontSize: u(15) }}
+                style={{ '--c': mine ? color : '#4b5468', padding: `${u(4)} ${u(14)}`, fontSize: u(15) }}
                 onClick={() => actions.voteBots(id)}
               >
-                {t(lv.name)} · {phase.botVotes?.[id] || 0}
+                {t(label)} · {phase.botVotes?.[id] || 0}
               </button>
             )
           })}
         </div>
         <span className="txt-o" style={{ fontSize: u(13), color: '#bdb3e0', fontWeight: 500 }}>
-          {t('Most votes wins - then everyone picks the map, and the round begins')}
+          {t('Most votes wins. Bots play at Medium. Then everyone picks the map, and the round begins')}
         </span>
       </div>
     )
@@ -245,8 +247,9 @@ export function WelcomeGift() {
   const phase = useGame((s) => s.phase)
   const now = useNow(1000)
   const asked = useRef(false)
-  // Not with a round about to start: the reel would be cut short.
-  const calm = phase.phase === 'waiting' || (phase.phase === 'intermission' && phase.endsAt - now > 12_000)
+  // Only in the countdown before the votes (or while waiting for players): never over
+  // the vote, never with a round about to start.
+  const calm = phase.phase === 'waiting' || (phase.phase === 'intermission' && phase.voteStage === 'wait' && phase.endsAt - now > 12_000)
   useEffect(() => {
     if (!loaded || given || asked.current || !calm) return undefined
     const id = setTimeout(() => {

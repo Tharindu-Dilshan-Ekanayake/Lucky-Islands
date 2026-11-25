@@ -68,7 +68,8 @@ function TopCenter() {
       bar = left / ROUND.fightMs
     } else if (phase.phase === 'ended') parts = [[t('ROUND OVER')]]
   } else if (phase.phase === 'intermission') {
-    parts = [[t('ROUND STARTS IN')], [formatClock(left), true]]
+    const stage = { mode: 'PICK THE MODE', map: 'PICK THE MAP' }[phase.voteStage] || 'ROUND STARTS IN'
+    parts = [[t(stage)], [formatClock(left), true]]
   } else if (phase.phase === 'waiting') {
     parts = [[phase.afk ? t('YOU ARE AFK') : t('WAITING FOR PLAYERS...')]]
     sub = phase.afk ? t('Turn AFK off to join the next round') : null
@@ -99,7 +100,7 @@ function TopCenter() {
       )}
       {zone !== 'lobby' && phase.teamSize > 1 && (phase.phase === 'cages' || phase.phase === 'fight') && <TeamChip />}
       {zone === 'lobby' && <PlayerCount />}
-      {zone === 'lobby' && (phase.phase === 'intermission' || phase.phase === 'waiting') && !phase.afk && <VoteCards phase={phase} />}
+      {zone === 'lobby' && ((phase.phase === 'intermission' && phase.voteStage !== 'wait') || phase.phase === 'waiting') && !phase.afk && <VoteCards phase={phase} />}
       {zone === 'lobby' && (phase.phase === 'cages' || phase.phase === 'fight') && (
         <div className="pointer-events-auto flex" style={{ gap: u(10) }}>
           {phase.canJoin && (
