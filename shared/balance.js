@@ -260,6 +260,31 @@ export const REWARDS = {
   placement: [0, 60, 30],
 }
 
+// --- Progression: XP, levels, daily quests ----------------------------------------------
+
+/** XP for a round. Lucky blocks count up to `maxLucky` a round. */
+export const XP = { play: 25, kill: 20, lucky: 4, maxLucky: 15, win: 80, placement: [0, 40, 20] }
+/** XP from `level` to the next one: 120, 160, 200, ... */
+export const levelXp = (level) => 80 + level * 40
+/** Cash on reaching a level; every fifth level also gives a free case. */
+export const levelCash = (level) => 50 + level * 10
+export const LEVEL_CASE_EVERY = 5
+
+/** Three of these each day. `stat` is what a round adds to (see logic.questStats). */
+export const QUESTS = {
+  kills5: { name: 'Get 5 kills', stat: 'kills', goal: 5, cash: 150, xp: 60 },
+  kills12: { name: 'Get 12 kills', stat: 'kills', goal: 12, cash: 300, xp: 120 },
+  win1: { name: 'Win a round', stat: 'wins', goal: 1, cash: 200, xp: 80 },
+  lucky15: { name: 'Break 15 lucky blocks', stat: 'lucky', goal: 15, cash: 120, xp: 50 },
+  lucky40: { name: 'Break 40 lucky blocks', stat: 'lucky', goal: 40, cash: 250, xp: 100 },
+  play3: { name: 'Play 3 rounds', stat: 'games', goal: 3, cash: 100, xp: 40 },
+  play8: { name: 'Play 8 rounds', stat: 'games', goal: 8, cash: 250, xp: 100 },
+  place100: { name: 'Place 100 blocks', stat: 'placed', goal: 100, cash: 120, xp: 50 },
+  top3x2: { name: 'Finish top 3 twice', stat: 'top3', goal: 2, cash: 150, xp: 60 },
+}
+export const QUEST_IDS = Object.keys(QUESTS)
+export const QUESTS_PER_DAY = 3
+
 // --- Cosmetics and cases ----------------------------------------------------------------
 
 export const RARITIES = {

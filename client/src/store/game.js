@@ -42,6 +42,8 @@ export const useGame = create((set, get) => ({
   toasts: [],
   /** Your last elimination: { name, streak, cash, id }. */
   killBanner: null,
+  /** `{ ups: [{ level, cash, case? }], id }` right after levelling up. */
+  levelUp: null,
   /** The last lucky block result: { text, items, rare, bad, id }. */
   loot: null,
   /** End of your round: { kind: 'dead' | 'win' | 'lost', by, placement, reward }. */
@@ -105,6 +107,7 @@ export const useGame = create((set, get) => ({
   setLoot: (loot) => set({ loot: loot ? { ...loot, id: ++toastId } : null }),
   setResult: (result) => set({ result }),
   setRoundReward: (roundReward) => set({ roundReward }),
+  setLevelUp: (levelUp) => set({ levelUp: levelUp ? { ...levelUp, id: ++toastId } : null }),
   setCaseOpen: (caseOpen) => set({ caseOpen }),
 
   openPanel: (panel, panelData = null) => set({ panel, panelData }),

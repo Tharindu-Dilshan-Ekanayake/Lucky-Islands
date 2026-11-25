@@ -7,6 +7,7 @@ import {
   createSession,
   equip,
   openCase,
+  refreshQuests,
 } from './logic.js'
 
 /**
@@ -28,6 +29,7 @@ export class PlayerSession {
     this.onLook = onLook
     this.rand = rand
     this.dirty = false
+    refreshQuests(profile, now)
   }
 
   sendProfile() {
@@ -36,7 +38,7 @@ export class PlayerSession {
   }
 
   look() {
-    return { cape: this.profile.cape, sword: this.profile.sword }
+    return { cape: this.profile.cape, sword: this.profile.sword, level: this.profile.level }
   }
 
   /** Lobby actions from the client. Unknown types are ignored. */
@@ -86,9 +88,14 @@ export class PlayerSession {
     }
   }
 
-  awardRound(result) {
-    const r = applyRoundResult(this.profile, result)
+  awardRound(result, now = Date.now()) {
+    const r = applyRoundResult(this.profile, result, now, this.rand)
     this.emit('roundReward', { ...r, fighters: result.fighters, mode: result.mode })
+    for (const q of r.quests) this.emit('reward', { label: `Quest done: ${q.name} (+${q.cash} cash, +${q.xp} XP)` })
+    if (r.levelUps.length) {
+      this.emit('levelUp', { ups: r.levelUps })
+      this.onLook(this.look())
+    }
     this.sendProfile()
     return r
   }

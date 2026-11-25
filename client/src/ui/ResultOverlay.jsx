@@ -74,6 +74,11 @@ export default function ResultOverlay() {
               {reward.kills} kill{reward.kills === 1 ? '' : 's'}
               {reward.win ? ' · +1 win' : ''}
             </div>
+            {reward.xp > 0 && (
+              <div className="txt-o" style={{ fontSize: u(18), color: '#7cf0ff', fontWeight: 700 }}>
+                +{reward.xp} XP{reward.quests?.length ? ` · ${reward.quests.length} quest${reward.quests.length === 1 ? '' : 's'} done!` : ''}
+              </div>
+            )}
           </div>
         )}
         {dead && (

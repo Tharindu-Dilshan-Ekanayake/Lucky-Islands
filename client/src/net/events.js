@@ -55,6 +55,8 @@ function teleport({ x, y, z, yaw, zone }) {
   runtime.snap = true
 }
 
+let levelUpTimer = 0
+
 export function handleServerEvent(type, p = {}) {
   const game = getGame()
   switch (type) {
@@ -247,6 +249,12 @@ export function handleServerEvent(type, p = {}) {
     }
     case 'roundReward':
       game.setRoundReward(p)
+      return
+    case 'levelUp':
+      sfx.levelUp()
+      game.setLevelUp(p)
+      clearTimeout(levelUpTimer)
+      levelUpTimer = setTimeout(() => getGame().setLevelUp(null), 4200)
       return
     case 'caseResult':
       game.setCaseOpen(p)

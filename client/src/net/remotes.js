@@ -96,6 +96,7 @@ function dress(r, entry) {
   /** Their Bloxity avatar as JSON `{ equipped, proportions }` ('' = base body). */
   r.lookKey = entry.look || ''
   r.team = entry.team ?? -1
+  r.level = entry.level || 0
 }
 
 /** Names, capes and skins from the roster. */

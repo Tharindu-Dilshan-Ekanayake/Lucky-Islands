@@ -105,7 +105,7 @@ export class GameHost {
     const eid = this.nextEid++
     const member = { cid, eid, name, afk: false, vote: null, mapVote: null, botVote: null }
     this.members.set(cid, member)
-    const ent = this.makeEnt(eid, name, { cid, cape: look.cape, sword: look.sword })
+    const ent = this.makeEnt(eid, name, { cid, cape: look.cape, sword: look.sword, level: look.level || 1 })
     this.toLobby(ent, false)
     this.ents.set(eid, ent)
     this.sendTo(cid, 'hello', { eid })
@@ -134,6 +134,7 @@ export class GameHost {
     if (!ent) return
     if (look.cape) ent.cape = look.cape
     if (look.sword) ent.sword = look.sword
+    if (Number.isFinite(look.level)) ent.level = look.level
     this.rosterDirty = true
   }
 
@@ -477,6 +478,8 @@ export class GameHost {
       const bot = this.makeEnt(eid, names[i % names.length], {
         bot: true,
         cape: capes[Math.floor(this.random() * capes.length)],
+        // A believable level for the nameplate (from the eid, so the rng sequence is untouched).
+        level: 2 + ((eid * 7) % 19),
       })
       this.ents.set(eid, bot)
       fighters.push(bot)
@@ -504,6 +507,8 @@ export class GameHost {
       ent.sel = 0
       ent.effects = {}
       ent.kills = 0
+      ent.lucky = 0
+      ent.placed = 0
       ent.lastHitBy = null
       ent.lastHurtAt = 0
       ent.dirty = true
@@ -568,6 +573,8 @@ export class GameHost {
     ent.rewarded = null
     ent.pendingReward = false
     ent.kills = 0
+    ent.lucky = 0
+    ent.placed = 0
     ent.effects = {}
     ent.lastHitBy = null
     ent.lastHurtAt = 0
@@ -790,6 +797,8 @@ export class GameHost {
     ent.rewarded = this.match
     this.onReward(ent.cid, {
       kills: ent.kills,
+      lucky: ent.lucky || 0,
+      placed: ent.placed || 0,
       placement,
       fighters: this.match.fighters,
       win: placement === 1,
@@ -909,6 +918,7 @@ export class GameHost {
 
   openLucky(ent, x, y, z, rare) {
     const mode = MODES[this.match.mode]
+    ent.lucky = (ent.lucky || 0) + 1
     const got = []
     let text = ''
     let bad = null
@@ -982,6 +992,7 @@ export class GameHost {
     } else {
       this.setBlock(x, y, z, item.block)
     }
+    ent.placed = (ent.placed || 0) + 1
     return true
   }
 
@@ -1422,6 +1433,7 @@ export class GameHost {
         bot: e.bot,
         cape: e.cape,
         sword: e.sword,
+        level: e.level || 1,
         look: e.look || '',
         team: e.zone === 'lobby' ? -1 : e.team ?? -1,
         zone: e.zone,

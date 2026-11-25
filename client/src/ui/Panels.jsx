@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
-import { AD_REWARDS, CAPES, casePool, CASES, DAILY_REWARDS, GEM_PRODUCTS, RARITIES, RARITY_ORDER, SWORD_SKINS } from '@shared/balance'
+import { AD_REWARDS, CAPES, casePool, CASES, DAILY_REWARDS, GEM_PRODUCTS, LEVEL_CASE_EVERY, levelCash, levelXp, QUESTS, RARITIES, RARITY_ORDER, SWORD_SKINS } from '@shared/balance'
 import { dailyStatus } from '@shared/logic'
 import { mulberry32 } from '@shared/rng'
 
@@ -33,8 +33,8 @@ export default function Panels() {
 
 function PanelBody({ panel }) {
   const close = useGame((s) => s.closePanel)
-  const titles = { bots: 'PLAY WITH BOTS', cases: 'CASES', backpack: 'BACKPACK', shop: 'SHOP', daily: 'DAILY REWARD', leaderboards: 'TOP PLAYERS', settings: 'SETTINGS' }
-  const Body = { bots: BotsPanel, cases: CasesPanel, backpack: BackpackPanel, shop: ShopPanel, daily: DailyPanel, leaderboards: LeaderboardsPanel, settings: SettingsPanel }[panel]
+  const titles = { bots: 'PLAY WITH BOTS', cases: 'CASES', backpack: 'BACKPACK', shop: 'SHOP', daily: 'DAILY REWARD', quests: 'LEVEL & QUESTS', leaderboards: 'TOP PLAYERS', settings: 'SETTINGS' }
+  const Body = { bots: BotsPanel, cases: CasesPanel, backpack: BackpackPanel, shop: ShopPanel, daily: DailyPanel, quests: QuestsPanel, leaderboards: LeaderboardsPanel, settings: SettingsPanel }[panel]
   if (!Body) return null
   return (
     <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/45" onPointerDown={(e) => e.target === e.currentTarget && close()}>
@@ -377,6 +377,74 @@ function DailyPanel() {
       >
         {status.ready ? `CLAIM $${status.reward}` : 'COME BACK TOMORROW'}
       </Button>
+    </div>
+  )
+}
+
+function QuestsPanel() {
+  const profile = useGame((s) => s.profile)
+  const level = profile.level || 1
+  const need = levelXp(level)
+  const xp = profile.xp || 0
+  const nextCase = Math.ceil((level + 1) / LEVEL_CASE_EVERY) * LEVEL_CASE_EVERY
+  const quests = profile.quests?.list || []
+  return (
+    <div className="flex flex-col" style={{ gap: u(14) }}>
+      <div className="slot flex items-center" style={{ padding: u(12), gap: u(14) }}>
+        <div className="flex flex-col items-center" style={{ minWidth: u(80) }}>
+          <span className="txt-o" style={{ fontSize: u(13), color: '#d9ccff' }}>
+            LEVEL
+          </span>
+          <Fancy size={40} from="#fff7b0" to="#ffb21a">
+            {String(level)}
+          </Fancy>
+        </div>
+        <div className="flex flex-1 flex-col" style={{ gap: u(6) }}>
+          <div className="flex justify-between txt-o" style={{ fontSize: u(15) }}>
+            <span>
+              {xp} / {need} XP
+            </span>
+            <span style={{ color: '#7cff6b' }}>Next level: +${levelCash(level + 1)}</span>
+          </div>
+          <div style={{ height: u(16), borderRadius: u(8), background: 'rgba(0,0,0,0.45)', overflow: 'hidden' }}>
+            <div className="xp-fill" style={{ width: `${Math.min(100, (xp / need) * 100)}%`, height: '100%', background: 'linear-gradient(90deg, #7cf0ff, #5f8bff)' }} />
+          </div>
+          <span className="txt-o" style={{ fontSize: u(13), color: '#e6c7ff' }}>
+            Free case at level {nextCase} · XP from playing, kills, lucky blocks, wins and quests
+          </span>
+        </div>
+      </div>
+      <Fancy size={22} from="#ffffff" to="#ffc28a">
+        TODAY'S QUESTS
+      </Fancy>
+      {quests.map((q) => {
+        const def = QUESTS[q.id]
+        if (!def) return null
+        return (
+          <div key={q.id} className="slot flex items-center" style={{ padding: u(10), gap: u(12), borderColor: q.done ? '#7cff6b' : undefined }}>
+            <span style={{ fontSize: u(26), width: u(32), textAlign: 'center' }}>{q.done ? '✔' : '★'}</span>
+            <div className="flex flex-1 flex-col" style={{ gap: u(4) }}>
+              <span className="txt-o" style={{ fontSize: u(17), fontWeight: 700 }}>
+                {def.name}
+              </span>
+              <div style={{ height: u(10), borderRadius: u(5), background: 'rgba(0,0,0,0.45)', overflow: 'hidden' }}>
+                <div className="xp-fill" style={{ width: `${(q.progress / def.goal) * 100}%`, height: '100%', background: q.done ? '#7cff6b' : 'linear-gradient(90deg, #ffd23b, #ff8a3c)' }} />
+              </div>
+            </div>
+            <div className="flex flex-col items-end txt-o" style={{ fontSize: u(14), minWidth: u(90) }}>
+              <span>
+                {Math.floor(q.progress)} / {def.goal}
+              </span>
+              <span style={{ color: '#7cff6b' }}>
+                ${def.cash} · {def.xp} XP
+              </span>
+            </div>
+          </div>
+        )
+      })}
+      <span className="txt-o" style={{ fontSize: u(13), color: '#bdb3e0', textAlign: 'center' }}>
+        New quests every day. Rewards are paid the moment a quest is done.
+      </span>
     </div>
   )
 }

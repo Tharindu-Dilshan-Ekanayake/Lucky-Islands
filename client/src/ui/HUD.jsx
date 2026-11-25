@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
-import { BOT_LEVEL_IDS, BOT_LEVELS, CASES, EFFECTS, ITEMS, lavaHeight, LAVA, MODES, MODE_IDS, ROUND, TEAMS } from '@shared/balance'
+import { BOT_LEVEL_IDS, BOT_LEVELS, CAPES, CASES, EFFECTS, ITEMS, lavaHeight, LAVA, levelXp, MODES, MODE_IDS, ROUND, SWORD_SKINS, TEAMS } from '@shared/balance'
 import { MAP_IDS, MAPS } from '@shared/maps'
 import { dailyStatus } from '@shared/logic'
 
@@ -48,6 +48,7 @@ export default function HUD() {
       )}
       {zone === 'spec' && <SpectateBar />}
       <NameTag />
+      <LevelUpBanner />
       <KillFeed />
       <Toasts />
     </div>
@@ -80,6 +81,9 @@ function NameTag() {
   const profileName = useGame((s) => s.profile.name)
   const wins = useGame((s) => s.profile.wins)
   const kills = useGame((s) => s.profile.kills)
+  const level = useGame((s) => s.profile.level || 1)
+  const xp = useGame((s) => s.profile.xp || 0)
+  const need = levelXp(level)
   const name = identity?.displayName || identity?.username || profileName || 'Guest'
   const pfp = identity?.pfp
   return (
@@ -100,6 +104,14 @@ function NameTag() {
         <span className="txt-o" style={{ fontSize: u(14) }}>
           <span style={{ color: '#ffd23b' }}>👑 {wins}</span> <span style={{ color: '#ff8a8a', marginLeft: u(8) }}>⚔ {kills}</span>
         </span>
+        <div className="flex items-center" style={{ gap: u(5), marginTop: u(2) }} title={`${xp} / ${need} XP`}>
+          <span className="np-lvl" style={{ display: 'inline-block', margin: 0 }}>
+            {level}
+          </span>
+          <div style={{ width: u(110), height: u(8), borderRadius: u(4), background: 'rgba(0,0,0,0.45)', overflow: 'hidden' }}>
+            <div key={level} className="xp-fill" style={{ width: `${Math.min(100, (xp / need) * 100)}%`, height: '100%', background: 'linear-gradient(90deg, #7cf0ff, #5f8bff)' }} />
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -434,6 +446,38 @@ function Crosshair() {
   )
 }
 
+/** LEVEL UP! with what it gave you. */
+function LevelUpBanner() {
+  const levelUp = useGame((s) => s.levelUp)
+  if (!levelUp?.ups?.length) return null
+  const top = levelUp.ups.at(-1)
+  const cash = levelUp.ups.reduce((s, x) => s + x.cash, 0)
+  const won = levelUp.ups.find((x) => x.case?.ok)?.case
+  return (
+    <div
+      key={levelUp.id}
+      className="level-up absolute left-1/2 z-30 flex flex-col items-center text-center"
+      style={{ top: '14%', padding: `${u(24)} ${u(70)}`, background: 'radial-gradient(ellipse at center, rgba(13,10,24,0.82) 0%, rgba(13,10,24,0.55) 45%, rgba(13,10,24,0) 72%)' }}
+    >
+      <Fancy size={52} from="#fff7b0" to="#ffb21a">
+        LEVEL UP!
+      </Fancy>
+      <Fancy size={34} from="#e4fbff" to="#5fb8ff">
+        {`LEVEL ${top.level}`}
+      </Fancy>
+      <span className="txt-o" style={{ fontSize: u(20), color: '#7cff6b', fontWeight: 700 }}>
+        +${cash}
+      </span>
+      {won && (
+        <span className="txt-o" style={{ fontSize: u(17), color: '#e6c7ff' }}>
+          Free {won.kind}: {(won.kind === 'cape' ? CAPES : SWORD_SKINS)[won.id]?.name || won.id}
+          {won.duplicate ? ` (duplicate, +$${won.refund})` : ''}
+        </span>
+      )}
+    </div>
+  )
+}
+
 /** "ELIMINATED <name>" in the middle of the screen, with streaks. */
 function KillBanner() {
   const banner = useGame((s) => s.killBanner)
@@ -629,6 +673,7 @@ function LobbyMenu() {
       <MenuButton label="CASES" color="#c25cff" onClick={() => go('cases', { caseId: 'cape' })} />
       <MenuButton label="BACKPACK" color="#b0633a" onClick={() => go('backpack')} />
       <MenuButton label="DAILY" color="#3fa2ff" badge={dailyReady} onClick={() => go('daily')} />
+      <MenuButton label="QUESTS" color="#e0702b" onClick={() => go('quests')} />
       <MenuButton label="TOP" color="#2bb3a3" onClick={() => go('leaderboards')} />
       <MenuButton label="BOTS ONLY" color="#7a5cd8" onClick={() => go('bots')} />
       <MenuButton label={afk ? 'AFK: ON' : 'AFK: OFF'} color={afk ? '#d8443a' : '#4b5563'} onClick={() => actions.afk(!afk)} />

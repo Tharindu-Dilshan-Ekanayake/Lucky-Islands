@@ -148,9 +148,9 @@ export default function Characters() {
         const el = document.createElement('div')
         el.className = 'nameplate'
         el.style.display = 'none'
-        el.innerHTML = '<div class="np-bubble"></div><div class="np-name"></div>'
+        el.innerHTML = '<div class="np-bubble"></div><span class="np-lvl"></span><div class="np-name"></div>'
         layer.appendChild(el)
-        labels.push({ el, bubble: el.firstChild, name: el.lastChild, text: '', bubbleText: '', shown: false })
+        labels.push({ el, bubble: el.firstChild, lvl: el.children[1], name: el.lastChild, text: '', lvlText: '', bubbleText: '', shown: false })
       }
     }
     return () => {
@@ -359,6 +359,12 @@ function placeLabel(label, c, camera, size, maxDist, now) {
   if (label.text !== c.name) {
     label.text = c.name
     label.name.textContent = c.name
+  }
+  const lvl = c.level ? String(c.level) : ''
+  if (label.lvlText !== lvl) {
+    label.lvlText = lvl
+    label.lvl.textContent = lvl
+    label.lvl.style.display = lvl ? 'inline-block' : 'none'
   }
   // Team modes: the label wears the team colour (teammates also get a marker).
   const team = runtime.teamSize > 1 && runtime.zone !== 'lobby' ? c.team ?? -1 : -1

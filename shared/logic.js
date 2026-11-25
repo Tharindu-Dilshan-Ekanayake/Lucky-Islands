@@ -6,10 +6,18 @@ import {
   DAY_MS,
   DUPLICATE_REFUND,
   GEM_PRODUCTS,
+  LEVEL_CASE_EVERY,
+  levelCash,
+  levelXp,
+  QUEST_IDS,
+  QUESTS,
+  QUESTS_PER_DAY,
   REWARDS,
   rollCase,
   SWORD_SKINS,
+  XP,
 } from './balance.js'
+import { mulberry32 } from './rng.js'
 
 /**
  * The saved profile and the pure rules that change it: round rewards, cases, equipping,
@@ -38,6 +46,9 @@ export function createProfile(id, name) {
     adAt: {},
     tutorial: false,
     welcomeGift: false,
+    level: 1,
+    xp: 0,
+    quests: { day: -1, list: [] },
     stats: { playtime: 0, bestKills: 0, cashEarned: 0, casesOpened: 0 },
     createdAt: Date.now(),
     lastSeen: Date.now(),
@@ -59,6 +70,15 @@ export function normalizeProfile(raw, id, name) {
   p.passes = raw.passes && typeof raw.passes === 'object' ? { ...raw.passes } : {}
   p.daily = { lastDay: isNum(raw.daily?.lastDay) ? raw.daily.lastDay : -1, streak: isNum(raw.daily?.streak) ? raw.daily.streak : 0 }
   p.adAt = raw.adAt && typeof raw.adAt === 'object' ? { ...raw.adAt } : {}
+  p.level = isNum(raw.level) ? Math.max(1, Math.floor(raw.level)) : 1
+  p.xp = isNum(raw.xp) ? Math.max(0, Math.floor(raw.xp)) : 0
+  const q = raw.quests
+  p.quests = {
+    day: isNum(q?.day) ? q.day : -1,
+    list: Array.isArray(q?.list)
+      ? q.list.filter((e) => e && QUESTS[e.id]).map((e) => ({ id: e.id, progress: isNum(e.progress) ? Math.max(0, e.progress) : 0, done: Boolean(e.done) }))
+      : [],
+  }
   p.stats = { ...base.stats, ...(raw.stats || {}) }
   for (const k of Object.keys(base.stats)) if (!isNum(p.stats[k])) p.stats[k] = 0
   return p
@@ -71,8 +91,83 @@ export function createSession(now) {
 
 export const dayNumber = (now) => Math.floor(now / DAY_MS)
 
-/** Cash for a finished round, and the profile updated with it. */
-export function applyRoundResult(profile, { kills = 0, placement = 99, win = false }) {
+/** `{ level, xp, need }`: where you are on the way to the next level. */
+export function levelProgress(profile) {
+  return { level: profile.level, xp: profile.xp, need: levelXp(profile.level) }
+}
+
+/**
+ * Adds XP and handles the level-ups it causes: cash each level, a free case (capes and
+ * swords in turn) every fifth. Returns `[{ level, cash, case? }]`, one per level gained.
+ */
+export function addXp(profile, xp, rng = Math.random) {
+  const ups = []
+  profile.xp += Math.max(0, Math.floor(xp))
+  while (profile.xp >= levelXp(profile.level)) {
+    profile.xp -= levelXp(profile.level)
+    profile.level += 1
+    const up = { level: profile.level, cash: levelCash(profile.level) }
+    profile.cash += up.cash
+    if (profile.level % LEVEL_CASE_EVERY === 0) {
+      const caseId = (profile.level / LEVEL_CASE_EVERY) % 2 ? 'cape' : 'sword'
+      up.case = openCase(profile, caseId, rng, true)
+    }
+    ups.push(up)
+  }
+  return ups
+}
+
+/** Today's quests (picked from the day and your id, so they're the same on every device). */
+export function refreshQuests(profile, now) {
+  const today = dayNumber(now)
+  if (profile.quests.day === today && profile.quests.list.length) return false
+  let h = today
+  for (const ch of String(profile.id)) h = (h * 31 + ch.charCodeAt(0)) | 0
+  const rng = mulberry32(h)
+  const pool = [...QUEST_IDS]
+  const list = []
+  while (list.length < QUESTS_PER_DAY && pool.length) {
+    const id = pool.splice(Math.floor(rng() * pool.length), 1)[0]
+    // One quest per kind of stat a day.
+    if (list.some((q) => QUESTS[q.id].stat === QUESTS[id].stat)) continue
+    list.push({ id, progress: 0, done: false })
+  }
+  profile.quests = { day: today, list }
+  return true
+}
+
+/** What a round adds to each quest stat. */
+export const questStats = ({ kills = 0, placement = 99, win = false, lucky = 0, placed = 0 }) => ({
+  kills,
+  wins: win ? 1 : 0,
+  lucky,
+  games: 1,
+  placed,
+  top3: placement <= 3 ? 1 : 0,
+})
+
+/** Moves today's quests along; finished ones pay out. Returns the ones just finished. */
+export function progressQuests(profile, stats, now) {
+  refreshQuests(profile, now)
+  const done = []
+  for (const q of profile.quests.list) {
+    if (q.done) continue
+    const def = QUESTS[q.id]
+    q.progress = Math.min(def.goal, q.progress + (stats[def.stat] || 0))
+    if (q.progress >= def.goal) {
+      q.done = true
+      profile.cash += def.cash
+      done.push({ id: q.id, name: def.name, cash: def.cash, xp: def.xp })
+    }
+  }
+  return done
+}
+
+/**
+ * A finished round: cash, XP, quest progress and any level-ups, all applied to the
+ * profile. `lucky` and `placed` are the lucky blocks broken and blocks placed.
+ */
+export function applyRoundResult(profile, { kills = 0, placement = 99, win = false, lucky = 0, placed = 0 }, now = Date.now(), rng = Math.random) {
   let cash = REWARDS.play + kills * REWARDS.kill
   if (win) cash += REWARDS.win
   cash += REWARDS.placement[placement - 1] || 0
@@ -83,7 +178,13 @@ export function applyRoundResult(profile, { kills = 0, placement = 99, win = fal
   if (win) profile.wins += 1
   profile.stats.bestKills = Math.max(profile.stats.bestKills, kills)
   profile.stats.cashEarned += cash
-  return { cash, kills, placement, win }
+
+  let xp = XP.play + kills * XP.kill + Math.min(lucky, XP.maxLucky) * XP.lucky + (XP.placement[placement - 1] || 0)
+  if (win) xp += XP.win
+  const quests = progressQuests(profile, questStats({ kills, placement, win, lucky, placed }), now)
+  const questXp = quests.reduce((s, q) => s + q.xp, 0)
+  const levelUps = addXp(profile, xp + questXp, rng)
+  return { cash, kills, placement, win, xp, quests, levelUps, level: profile.level }
 }
 
 /**

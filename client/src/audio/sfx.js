@@ -414,6 +414,11 @@ export const sfx = {
   reward() {
     if (ready('reward', 200)) arp(784, [0, 4, 7, 12], { step: 0.06, volume: 0.07 })
   },
+  levelUp() {
+    if (!ready('levelUp', 1000)) return
+    arp(523, [0, 4, 7, 12, 16, 19, 24], { step: 0.07, volume: 0.08 })
+    tone(1047, { at: 0.5, type: 'triangle', duration: 0.6, volume: 0.06, echo: true })
+  },
   buy() {
     if (ready('buy', 100)) arp(659, [0, 7, 12], { step: 0.05, volume: 0.08 })
   },

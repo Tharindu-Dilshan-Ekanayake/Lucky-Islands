@@ -169,6 +169,20 @@ canvas {
   color: #fff;
   white-space: nowrap;
 }
+/* The level badge beside a name. */
+.np-lvl {
+  display: none;
+  min-width: calc(var(--u) * 22);
+  margin-right: calc(var(--u) * 3);
+  padding: 0 calc(var(--u) * 4);
+  border-radius: calc(var(--u) * 6);
+  background: linear-gradient(#ffe36b, #e0a21b);
+  color: #2a1a00;
+  font-size: calc(var(--u) * 14);
+  font-weight: 700;
+  vertical-align: top;
+  line-height: calc(var(--u) * 22);
+}
 .np-bubble {
   display: none;
   max-width: calc(var(--u) * 260);
@@ -768,5 +782,44 @@ img.heart-low {
   .zone-fade,
   .confetti {
     display: none;
+  }
+}
+
+/* Level up! */
+@keyframes level-up {
+  0% {
+    transform: translate(-50%, 0) scale(0.3);
+    opacity: 0;
+  }
+  12% {
+    transform: translate(-50%, 0) scale(1.15);
+    opacity: 1;
+  }
+  20%,
+  85% {
+    transform: translate(-50%, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, calc(var(--u) * -30)) scale(0.95);
+    opacity: 0;
+  }
+}
+.level-up {
+  animation: level-up 4.2s ease-out both;
+}
+@keyframes xp-fill {
+  from {
+    transform: scaleX(0);
+  }
+}
+.xp-fill {
+  transform-origin: left center;
+  animation: xp-fill 0.9s cubic-bezier(0.2, 0.9, 0.3, 1) backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .level-up,
+  .xp-fill {
+    animation: none !important;
   }
 }
