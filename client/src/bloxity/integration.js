@@ -1,6 +1,6 @@
 import { setAdBreakMuted, setMasterVolume, setMusicVolume } from '../audio/sfx'
 import { respawn, runtime } from '../game/runtime'
-import { getGame, useGame } from '../store/game'
+import { getGame, useGame, voteOnScreen } from '../store/game'
 import { QUALITY_LEVELS, useQuality } from '../store/quality'
 import { handleChatMessage } from './chat'
 import { safeCall, toUnsubscribe } from './sdk'
@@ -172,17 +172,20 @@ function installLifecycle(sdk) {
   }
   /**
    * Screen ads only around a popup (a panel) opened in the lobby; never while playing:
-   * not in a round (even with a panel open there), and not with no popup open.
+   * not in a round (even with a panel open there), not with no popup open, and not while
+   * the mode or map vote is up (from the mode vote through the map vote, even if a panel
+   * is opened over it).
    */
+  const adsAllowed = (state) => !!state.panel && state.zone === 'lobby' && !voteOnScreen(state.phase, state.zone)
   const sync = (state) => {
     if (!state.playable) return
     start()
-    if (state.panel && state.zone === 'lobby') setScreen('panel')
+    if (adsAllowed(state)) setScreen('panel')
     else hideScreen()
   }
   sync(getGame())
   const unsubscribe = useGame.subscribe((state, prev) => {
-    if (state.playable !== prev.playable || state.panel !== prev.panel || state.zone !== prev.zone) sync(state)
+    if (state.playable !== prev.playable || adsAllowed(state) !== adsAllowed(prev)) sync(state)
   })
 
   const onPageHide = () => {
