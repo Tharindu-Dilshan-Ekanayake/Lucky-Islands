@@ -215,9 +215,15 @@ export class GameHost {
         ent.sel = clamp(Math.floor(num(p.slot)), 0, HOTBAR - 1)
         ent.dirty = true
         return
-      case 'dig':
-        ent.dig = { key: blockKey(num(p.x), num(p.y), num(p.z)), at: this.now() }
+      case 'dig': {
+        const x = Math.floor(num(p.x))
+        const y = Math.floor(num(p.y))
+        const z = Math.floor(num(p.z))
+        ent.dig = { key: blockKey(x, y, z), at: this.now() }
+        // Others see which block you're mining (chips fly off it while you swing).
+        if (ent.zone === 'match') this.toWatchers(ent, 'act', { eid: ent.eid, kind: 'dig', x, y, z })
         return
+      }
       case 'break':
         return this.onBreak(ent, Math.floor(num(p.x)), Math.floor(num(p.y)), Math.floor(num(p.z)))
       case 'place':
@@ -1105,6 +1111,8 @@ export class GameHost {
     }
     ent.placed = (ent.placed || 0) + 1
     this.match.stats.placed += 1
+    // Others see your arm swing as you build.
+    this.toWatchers(ent, 'swing', { eid: ent.eid })
     return true
   }
 
@@ -1228,7 +1236,15 @@ export class GameHost {
     this.take(ent, slotIndex, 1)
     ent.dirty = true
     if (ent.cid) this.sendTo(ent.cid, 'used', { item: slot.id })
+    // Others see you eat, drink or throw.
+    this.toWatchers(ent, 'act', { eid: ent.eid, kind: item.kind, item: slot.id })
     return true
+  }
+
+  /** Sends to everyone who can see `ent` in the round (players and spectators), but not `ent`. */
+  toWatchers(ent, type, payload) {
+    this.toZone('match', type, payload, ent.cid)
+    this.toZone('spec', type, payload, ent.cid)
   }
 
   // --- Projectiles ----------------------------------------------------------------------

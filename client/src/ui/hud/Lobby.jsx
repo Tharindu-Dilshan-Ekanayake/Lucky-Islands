@@ -165,11 +165,12 @@ export function VoteCards({ phase }) {
   )
 }
 
-function MenuButton({ label, icon, color, badge, onClick }) {
+function MenuButton({ label, short, icon, color, badge, onClick }) {
   return (
     <Button color={color} className="menu-btn relative flex flex-col items-center justify-center" onClick={onClick}>
       <GameIcon name={icon} size={34} />
       <span className="menu-label txt-o">{label}</span>
+      <span className="menu-label-short txt-o">{short || label}</span>
       {badge && (
         <span className="absolute flex items-center justify-center rounded-full bg-red-600" style={{ right: u(-10), top: u(-10), width: u(24), height: u(24), fontSize: u(15), border: `${u(3)} solid #0d0a18` }}>
           !
@@ -193,11 +194,11 @@ export function LobbyMenu() {
     <div className="lobby-menu pointer-events-auto absolute" style={{ left: u(14), gap: u(12) }}>
       <MenuButton label={t('SHOP')} icon="bag" color="#e0a21b" onClick={() => go('shop')} />
       <MenuButton label={t('CASES')} icon="chest" color="#c25cff" onClick={() => go('cases', { caseId: 'cape' })} />
-      <MenuButton label={t('BACKPACK')} icon="backpack" color="#b0633a" onClick={() => go('backpack')} />
+      <MenuButton label={t('BACKPACK')} short={t('BAG')} icon="backpack" color="#b0633a" onClick={() => go('backpack')} />
       <MenuButton label={t('DAILY')} icon="gift" color="#3fa2ff" badge={dailyReady} onClick={() => go('daily')} />
       <MenuButton label={t('QUESTS')} icon="scroll" color="#e0702b" onClick={() => go('quests')} />
       <MenuButton label={t('TOP')} icon="trophy" color="#2bb3a3" onClick={() => go('leaderboards')} />
-      <MenuButton label={afk ? t('AFK: ON') : t('AFK: OFF')} icon="moon" color={afk ? '#d8443a' : '#4b5563'} onClick={() => actions.afk(!afk)} />
+      <MenuButton label={afk ? t('AFK: ON') : t('AFK: OFF')} short={t('AFK')} icon="moon" color={afk ? '#d8443a' : '#4b5563'} onClick={() => actions.afk(!afk)} />
     </div>
   )
 }
@@ -225,7 +226,7 @@ export function StationPrompt() {
   const caseId = prompt.slice(5)
   const c = CASES[caseId]
   return (
-    <div className="absolute left-1/2 -translate-x-1/2" style={{ bottom: u(120) }}>
+    <div className="station-prompt absolute left-1/2 -translate-x-1/2" style={{ bottom: u(120) }}>
       <Button
         className="pointer-events-auto bob"
         color={c.color}

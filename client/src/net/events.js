@@ -181,6 +181,22 @@ export function handleServerEvent(type, p = {}) {
       if (r) r.swingAt = performance.now()
       return
     }
+    case 'act': {
+      // Another player mining, eating, drinking or throwing.
+      const r = runtime.remotes.get(p.eid)
+      if (!r) return
+      const now = performance.now()
+      if (p.kind === 'dig') {
+        r.digAt = { x: p.x, y: p.y, z: p.z, t: now }
+        return
+      }
+      r.swingAt = now
+      if (p.kind === 'food' || p.kind === 'potion' || p.kind === 'heart') {
+        pushFx({ type: 'use', kind: p.kind, x: r.x, y: r.y + 1.5, z: r.z })
+        if (near(r.x, r.y, r.z) > 0.2) (p.kind === 'potion' ? sfx.drink : sfx.eat)()
+      }
+      return
+    }
     case 'loot':
       game.setLoot(p)
       if (p.bad) sfx.unlucky()

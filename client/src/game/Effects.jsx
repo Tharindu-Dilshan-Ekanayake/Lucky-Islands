@@ -99,6 +99,7 @@ export default function Effects() {
       bolt,
       boltUntil: 0,
       nextPart: 0,
+      digChipsAt: 0,
       pops,
       popState: Array.from({ length: MAX_POPS }, () => ({ t: 0, x: 0, y: 0, z: 0 })),
       nextPop: 0,
@@ -177,6 +178,12 @@ export default function Effects() {
           spawn(fx.x, fx.y, fx.z, [0.92, 0.92, 0.95], 16, 2.2, 0.26, 0.9, -1.5)
           spawn(fx.x, fx.y, fx.z, [0.6, 0.6, 0.66], 10, 1.6, 0.2, 1.1, -1)
           break
+        case 'use': {
+          // Someone eating (crumbs), drinking (a coloured swirl) or eating a heart (sparkles).
+          const c = fx.kind === 'food' ? [0.75, 0.45, 0.2] : fx.kind === 'heart' ? [1, 0.25, 0.4] : [1, 0.45, 0.85]
+          spawn(fx.x, fx.y, fx.z, c, 8, 1.6, 0.07, 0.6, fx.kind === 'food' ? 12 : -2)
+          break
+        }
         case 'hit':
           spawn(fx.x, fx.y, fx.z, [0.9, 0.1, 0.1], 7, 2.5, 0.09, 0.45)
           break
@@ -223,6 +230,21 @@ export default function Effects() {
       }
     }
     runtime.fx.length = 0
+
+    // Other players mining: chips fly off the block they're on while they swing.
+    if (q.particles && now - P.digChipsAt > 160 && worldState.world) {
+      P.digChipsAt = now
+      for (const r of runtime.remotes.values()) {
+        const d = r.digAt
+        if (!d || now - d.t > 4000 || now - r.swingAt > 450) continue
+        const id = worldState.world.get(d.x, d.y, d.z)
+        if (!id) {
+          r.digAt = null
+          continue
+        }
+        if (Math.hypot(d.x - camera.position.x, d.z - camera.position.z) < 40) spawn(d.x + 0.5, d.y + 0.6, d.z + 0.5, blockColor(id), 2, 2.2, 0.08, 0.4)
+      }
+    }
 
     // Particles.
     let n = 0

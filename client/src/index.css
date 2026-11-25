@@ -948,31 +948,6 @@ img.heart-low {
  * Set by TouchControls (body.touch-ui). The lobby menu shrinks so it stays clear of the vote
  * in the middle; the wallet moves to the bottom centre, away from the move stick.
  */
-.touch-ui .menu-btn {
-  width: calc(var(--u) * 56);
-  height: calc(var(--u) * 56);
-  padding: calc(var(--u) * 4) calc(var(--u) * 2);
-  gap: calc(var(--u) * 3);
-  border-radius: calc(var(--u) * 12);
-}
-.touch-ui .menu-btn svg {
-  width: calc(var(--u) * 24) !important;
-  height: calc(var(--u) * 24) !important;
-}
-.touch-ui .menu-label {
-  font-size: calc(var(--u) * 9);
-}
-.touch-ui .lobby-menu {
-  gap: calc(var(--u) * 6);
-}
-.touch-ui .wallet {
-  left: 50% !important;
-  bottom: calc(var(--u) * 8) !important;
-  transform: translateX(-50%);
-  flex-direction: row;
-  align-items: baseline;
-  gap: calc(var(--u) * 18) !important;
-}
 .touch-ui .wallet > * {
   font-size: calc(var(--u) * 22) !important;
 }
@@ -980,19 +955,6 @@ img.heart-low {
 @media (orientation: landscape) and (max-height: 520px) {
   .touch-ui .vote-panel {
     transform: scale(0.62);
-  }
-  .touch-ui .lobby-menu {
-    top: calc(var(--u) * 64);
-  }
-}
-@media (orientation: portrait) {
-  .touch-ui .lobby-menu {
-    /* One row of tiles, centred, just above the move stick's ring (128 px tall). */
-    grid-template-columns: repeat(7, auto);
-    top: auto;
-    left: 50% !important;
-    transform: translateX(-50%);
-    bottom: calc(var(--slot) + var(--u) * 96 + 134px);
   }
 }
 
@@ -1028,30 +990,73 @@ img.heart-low {
     /* Centred between the move area and the action buttons (about 230u wide each). */
     --slot: clamp(28px, calc((100vw - var(--u) * 490 - 24px) / 9), 48px);
   }
-  .touch-ui .touch-root[data-zone='match'] .stick-ghost {
-    /* In a round the stick hint sits above the hotbar's height. */
+  .touch-ui .stick-ghost {
+    /* The stick hint sits above the hotbar's (and the lobby menu bar's) height. */
     bottom: calc(var(--slot) + var(--u) * 70) !important;
   }
 }
-/* Very short landscape screens (old small phones): the menu is one row of tiles along the
-   bottom, between the move stick and the action buttons; the vote shrinks a little more. */
+/* Very short landscape screens (old small phones): the vote shrinks a little more. */
 @media (orientation: landscape) and (max-height: 340px) {
-  .touch-ui .lobby-menu {
-    grid-template-columns: repeat(7, auto);
-    top: auto;
-    left: 50% !important;
-    transform: translateX(-50%);
-    bottom: calc(var(--u) * 48);
-  }
-  .touch-ui .menu-btn {
-    width: calc(var(--u) * 52);
-    height: calc(var(--u) * 52);
-  }
   .touch-ui .vote-panel {
     transform: scale(0.55);
   }
-  /* No room for the stick's resting ring next to the menu row: the stick still works
-     anywhere on the left, it just isn't drawn until you touch. */
+}
+
+/* --- Phones: the lobby menu is a bar at the bottom, like the hotbar in a round ---------------
+ * Same tray, same place, same tile size as the hotbar slots (--slot); short labels. The wallet
+ * sits just above it (where the hearts go in a round), the case prompt above that.
+ */
+.menu-label-short {
+  display: none;
+}
+.touch-ui .lobby-menu {
+  top: auto;
+  left: 50% !important;
+  transform: translateX(-50%);
+  bottom: 10px;
+  grid-template-columns: repeat(7, auto);
+  gap: calc(var(--u) * 3);
+  padding: calc(var(--u) * 5);
+  background: rgba(13, 10, 24, 0.42);
+  border: calc(var(--u) * 2) solid rgba(255, 255, 255, 0.1);
+  border-radius: calc(var(--u) * 16);
+  box-shadow: 0 calc(var(--u) * 6) calc(var(--u) * 16) rgba(0, 0, 0, 0.25);
+}
+.touch-ui .menu-btn {
+  width: var(--slot);
+  height: var(--slot);
+  padding: 2px;
+  gap: 1px;
+  border-radius: calc(var(--u) * 10);
+}
+.touch-ui .menu-btn svg {
+  width: calc(var(--slot) * 0.46) !important;
+  height: calc(var(--slot) * 0.46) !important;
+}
+.touch-ui .menu-label {
+  display: none;
+}
+.touch-ui .menu-label-short {
+  display: block;
+  font-size: max(7px, calc(var(--slot) * 0.19));
+  line-height: 1;
+  white-space: nowrap;
+}
+.touch-ui .wallet {
+  left: 50% !important;
+  bottom: calc(10px + var(--slot) + var(--u) * 22) !important;
+  transform: translateX(-50%);
+  flex-direction: row;
+  align-items: baseline;
+  gap: calc(var(--u) * 18) !important;
+}
+.touch-ui .station-prompt {
+  bottom: calc(10px + var(--slot) + var(--u) * 70) !important;
+}
+
+@media (orientation: landscape) and (max-height: 340px) {
+  /* No room for the stick's resting ring next to the vote: the stick still works anywhere
+     on the left, it just isn't drawn until you touch. */
   .touch-ui .touch-root[data-zone='lobby'] .stick-ghost {
     display: none;
   }

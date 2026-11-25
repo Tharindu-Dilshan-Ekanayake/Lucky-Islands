@@ -83,7 +83,12 @@ export default function ViewModel() {
     const landT = (now - runtime.camera.landAt) / 260
     const land = landT >= 0 && landT < 1 ? Math.sin(landT * Math.PI) * (1 - landT) * runtime.camera.landAmp : 0
 
-    holder.position.set(0.42 + bobX - eating * 0.2 - pull * 0.15, -0.36 - bobY + eating * 0.12 - swing * 0.06 - raise * raise * 0.45 + settle * 0.3 - land * 0.08, -0.62 + swing * 0.05)
+    // How far right the hand can go and still be on screen (narrow in portrait).
+    const halfW = Math.tan((35 * Math.PI) / 180) * camera.aspect * 0.62
+    const handX = Math.min(0.42, halfW * 0.72)
+    // A little smaller on a tall, narrow screen so it doesn't fill it.
+    holder.scale.setScalar(camera.aspect < 1 ? 0.8 : 1)
+    holder.position.set(handX + bobX - eating * 0.2 - pull * 0.15, -0.36 - bobY + eating * 0.12 - swing * 0.06 - raise * raise * 0.45 + settle * 0.3 - land * 0.08, -0.62 + swing * 0.05)
     holder.rotation.set(-swing * 0.9 + eating * 0.4 - raise * 0.7 + land * 0.15, -swing * 0.35 + pull * 0.4, swing * 0.2 + raise * 0.25)
 
     if (model) {
