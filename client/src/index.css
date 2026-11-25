@@ -899,7 +899,7 @@ img.heart-low {
     width: auto !important;
   }
   .vote-maps > .vote-card {
-    width: calc(var(--u) * 240) !important;
+    width: calc(var(--u) * 200) !important;
   }
   .touch-cluster {
     bottom: calc(var(--slot) + var(--u) * 80) !important;
@@ -987,8 +987,72 @@ img.heart-low {
 }
 @media (orientation: portrait) {
   .touch-ui .lobby-menu {
-    /* Above the move stick's ring (128 px tall, raised by --slot + 90u). */
+    /* One row of tiles, centred, just above the move stick's ring (128 px tall). */
+    grid-template-columns: repeat(7, auto);
     top: auto;
-    bottom: calc(var(--slot) + var(--u) * 100 + 140px);
+    left: 50% !important;
+    transform: translateX(-50%);
+    bottom: calc(var(--slot) + var(--u) * 96 + 134px);
+  }
+}
+
+/* --- Hotbar and hearts ----------------------------------------------------------------------
+ * The hotbar sits on a soft rounded tray, the hearts on a pill above it. On phones the slot
+ * size comes from the screen width, so the bar keeps a margin on both sides and never runs
+ * under the touch buttons.
+ */
+.hotbar {
+  padding: calc(var(--u) * 5);
+  background: rgba(13, 10, 24, 0.42);
+  border: calc(var(--u) * 2) solid rgba(255, 255, 255, 0.1);
+  border-radius: calc(var(--u) * 16);
+  box-shadow: 0 calc(var(--u) * 6) calc(var(--u) * 16) rgba(0, 0, 0, 0.25);
+}
+.hearts-row > :first-child {
+  width: auto !important;
+  padding: calc(var(--u) * 3) calc(var(--u) * 10);
+  background: rgba(13, 10, 24, 0.42);
+  border-radius: 999px;
+}
+@media (orientation: portrait) {
+  .touch-ui {
+    /* Nine slots across the screen less a 14 px margin each side, the tray and gaps. */
+    --slot: min(52px, calc((100vw - 28px - var(--u) * 48) / 9));
+  }
+  .touch-ui .bottom-bar {
+    padding-bottom: 10px !important;
+  }
+}
+@media (orientation: landscape) {
+  .touch-ui {
+    /* Centred between the move area and the action buttons (about 230u wide each). */
+    --slot: clamp(28px, calc((100vw - var(--u) * 490 - 24px) / 9), 48px);
+  }
+  .touch-ui .touch-root[data-zone='match'] .stick-ghost {
+    /* In a round the stick hint sits above the hotbar's height. */
+    bottom: calc(var(--slot) + var(--u) * 70) !important;
+  }
+}
+/* Very short landscape screens (old small phones): the menu is one row of tiles along the
+   bottom, between the move stick and the action buttons; the vote shrinks a little more. */
+@media (orientation: landscape) and (max-height: 340px) {
+  .touch-ui .lobby-menu {
+    grid-template-columns: repeat(7, auto);
+    top: auto;
+    left: 50% !important;
+    transform: translateX(-50%);
+    bottom: calc(var(--u) * 48);
+  }
+  .touch-ui .menu-btn {
+    width: calc(var(--u) * 52);
+    height: calc(var(--u) * 52);
+  }
+  .touch-ui .vote-panel {
+    transform: scale(0.55);
+  }
+  /* No room for the stick's resting ring next to the menu row: the stick still works
+     anywhere on the left, it just isn't drawn until you touch. */
+  .touch-ui .touch-root[data-zone='lobby'] .stick-ghost {
+    display: none;
   }
 }

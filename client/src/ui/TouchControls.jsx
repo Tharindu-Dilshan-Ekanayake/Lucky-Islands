@@ -153,7 +153,7 @@ export default function TouchControls() {
   )
 
   return (
-    <div className="absolute inset-0 z-[5]" onTouchStart={onStart} onTouchMove={onMove} onTouchEnd={onEnd} onTouchCancel={onEnd} style={{ touchAction: 'none' }}>
+    <div className="touch-root absolute inset-0 z-[5]" data-zone={zone} onTouchStart={onStart} onTouchMove={onMove} onTouchEnd={onEnd} onTouchCancel={onEnd} style={{ touchAction: 'none' }}>
       {/* The stick: where it rests until you touch, then under your thumb. */}
       {knob ? (
         <div className="pointer-events-none absolute" style={{ left: knob.ox - STICK, top: knob.oy - STICK, width: STICK * 2, height: STICK * 2, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,255,255,0.08), rgba(255,255,255,0.2))', border: '3px solid rgba(255,255,255,0.45)' }}>
