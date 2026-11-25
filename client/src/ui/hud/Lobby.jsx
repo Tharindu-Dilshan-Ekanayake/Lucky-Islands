@@ -167,14 +167,9 @@ export function VoteCards({ phase }) {
 
 function MenuButton({ label, icon, color, badge, onClick }) {
   return (
-    <Button
-      color={color}
-      className="menu-btn relative flex items-center"
-      style={{ width: u(178), padding: `${u(7)} ${u(12)}`, fontSize: u(17), fontWeight: 700, gap: u(10) }}
-      onClick={onClick}
-    >
-      <GameIcon name={icon} size={26} />
-      <span className="flex-1 text-left">{label}</span>
+    <Button color={color} className="menu-btn relative flex flex-col items-center justify-center" onClick={onClick}>
+      <GameIcon name={icon} size={34} />
+      <span className="menu-label txt-o">{label}</span>
       {badge && (
         <span className="absolute flex items-center justify-center rounded-full bg-red-600" style={{ right: u(-10), top: u(-10), width: u(24), height: u(24), fontSize: u(15), border: `${u(3)} solid #0d0a18` }}>
           !

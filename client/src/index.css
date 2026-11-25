@@ -270,17 +270,35 @@ canvas {
   animation: bob 1.4s ease-in-out infinite;
 }
 
-/* The lobby menu: a column, or two on short (landscape phone) screens. */
+/*
+ * The lobby menu: square tiles (icon over label), two to a row, on the left - narrow
+ * enough to stay clear of the vote panel in the middle on any screen.
+ */
 .lobby-menu {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: calc(var(--u) * 10);
   top: 50%;
   transform: translateY(-50%);
 }
+.menu-btn {
+  width: calc(var(--u) * 84);
+  height: calc(var(--u) * 84);
+  padding: calc(var(--u) * 6) calc(var(--u) * 4);
+  gap: calc(var(--u) * 5);
+}
+.menu-btn svg {
+  width: calc(var(--u) * 34) !important;
+  height: calc(var(--u) * 34) !important;
+}
+.menu-label {
+  font-size: calc(var(--u) * 13);
+  line-height: 1;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
 @media (max-height: 520px) {
   .lobby-menu {
-    display: grid;
-    grid-template-columns: repeat(2, auto);
     top: calc(var(--u) * 70);
     transform: none;
   }
@@ -931,17 +949,21 @@ img.heart-low {
  * in the middle; the wallet moves to the bottom centre, away from the move stick.
  */
 .touch-ui .menu-btn {
-  width: calc(var(--u) * 128) !important;
-  padding: calc(var(--u) * 5) calc(var(--u) * 9) !important;
-  font-size: calc(var(--u) * 13) !important;
-  gap: calc(var(--u) * 7) !important;
+  width: calc(var(--u) * 56);
+  height: calc(var(--u) * 56);
+  padding: calc(var(--u) * 4) calc(var(--u) * 2);
+  gap: calc(var(--u) * 3);
+  border-radius: calc(var(--u) * 12);
 }
 .touch-ui .menu-btn svg {
-  width: calc(var(--u) * 18) !important;
-  height: calc(var(--u) * 18) !important;
+  width: calc(var(--u) * 24) !important;
+  height: calc(var(--u) * 24) !important;
+}
+.touch-ui .menu-label {
+  font-size: calc(var(--u) * 9);
 }
 .touch-ui .lobby-menu {
-  gap: calc(var(--u) * 8) !important;
+  gap: calc(var(--u) * 6);
 }
 .touch-ui .wallet {
   left: 50% !important;
