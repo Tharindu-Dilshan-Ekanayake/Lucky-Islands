@@ -2,7 +2,7 @@ import { MODES, ROUND } from '@shared/balance'
 import { MAPS } from '@shared/maps'
 
 import { actions } from '../net/actions'
-import { useGame } from '../store/game'
+import { useGame, voteOnScreen } from '../store/game'
 import { formatClock, u, useNow } from './format'
 import { Button, Fancy } from './kit'
 import { BigCount, BottomBar, Crosshair, LootPopup, Objective, SpectateBar, TeamChip } from './hud/Round'
@@ -99,7 +99,7 @@ function TopCenter() {
       )}
       {zone !== 'lobby' && phase.teamSize > 1 && (phase.phase === 'cages' || phase.phase === 'fight') && <TeamChip />}
       {zone === 'lobby' && <PlayerCount />}
-      {zone === 'lobby' && ((phase.phase === 'intermission' && phase.voteStage !== 'wait') || phase.phase === 'waiting') && !phase.afk && <VoteCards phase={phase} />}
+      {voteOnScreen(phase, zone) && <VoteCards phase={phase} />}
       {zone === 'lobby' && (phase.phase === 'cages' || phase.phase === 'fight') && (
         <div className="pointer-events-auto flex" style={{ gap: u(10) }}>
           {phase.canJoin && (

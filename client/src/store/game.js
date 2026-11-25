@@ -20,6 +20,12 @@ function readSettings() {
 
 let toastId = 0
 
+/** The mode or map vote is on screen (in the lobby, waiting for players or voting). */
+export function voteOnScreen(phase, zone) {
+  if (zone !== 'lobby' || phase.afk) return false
+  return phase.phase === 'waiting' || (phase.phase === 'intermission' && phase.voteStage !== 'wait')
+}
+
 export const useGame = create((set, get) => ({
   profile: createProfile('local', 'Player'),
   session: createSession(Date.now()),
