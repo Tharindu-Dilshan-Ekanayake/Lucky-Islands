@@ -81,6 +81,8 @@ const SI = {
   // In a round
   'GO!': 'යමු!',
   'THE LAVA IS RISING!': 'ලාවා උඩට එනවා!',
+  'The lava is surging - get high or get to the middle!': 'ලාවා වේගයෙන් එනවා - උඩට යන්න, නැත්නම් මැදට යන්න!',
+  'THE LAVA IS SURGING!': 'ලාවා වේගයෙන් එනවා!',
   ELIMINATED: 'ඉවත් වුණා',
   'VICTORY!': 'ජයග්‍රහණය!',
   '{name} WINS!': '{name} දිනුවා!',

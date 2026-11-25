@@ -32,6 +32,14 @@ export const ROUND = {
 export const LAVA = {
   startY: 6,
   riseAfterMs: 50_000,
+  /**
+   * Two stages: a slow creep up to `surgeY` (under the islands: it threatens nobody
+   * standing, it just looks closer), then a surge that floods the islands and ends any
+   * stand-off, reaching `endY` `finishEarlyMs` before the clock runs out.
+   */
+  surgeY: 18,
+  surgeAt: 0.53,
+  finishEarlyMs: 15_000,
   endY: 40,
   /** Damage every `tickMs` while you stand in it. */
   damage: 4,
@@ -43,8 +51,10 @@ export function lavaHeight(ms, mode = 'classic') {
   const m = MODES[mode] || MODES.classic
   const start = LAVA.riseAfterMs * m.lavaDelay
   if (ms <= start) return LAVA.startY
-  const t = Math.min(1, (ms - start) / (ROUND.fightMs - start))
-  return LAVA.startY + (LAVA.endY - LAVA.startY) * t
+  const end = m.lavaEndMs || ROUND.fightMs - LAVA.finishEarlyMs
+  const t = Math.min(1, (ms - start) / (end - start))
+  if (t < LAVA.surgeAt) return LAVA.startY + (LAVA.surgeY - LAVA.startY) * (t / LAVA.surgeAt)
+  return LAVA.surgeY + (LAVA.endY - LAVA.surgeY) * ((t - LAVA.surgeAt) / (1 - LAVA.surgeAt))
 }
 
 /** Game modes the lobby votes on. */
@@ -113,6 +123,8 @@ export const MODES = {
     rareChance: 0.15,
     hpBonus: 0,
     lavaDelay: 0.15,
+    /** The lava is done by this far into the fight (the default is fightMs - finishEarlyMs). */
+    lavaEndMs: 170_000,
     rolls: 1,
   },
 }

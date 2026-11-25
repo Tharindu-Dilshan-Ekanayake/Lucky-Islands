@@ -80,7 +80,7 @@ export function Objective() {
   } else if (phase.phase === 'fight') {
     const elapsed = ROUND.fightMs - Math.max(0, phase.endsAt - now)
     if (lavaHeight(elapsed, phase.mode) > LAVA.startY + 0.05) {
-      text = t('THE LAVA IS RISING!')
+      text = lavaHeight(elapsed, phase.mode) > LAVA.surgeY ? t('THE LAVA IS SURGING!') : t('THE LAVA IS RISING!')
       hot = true
     }
   }

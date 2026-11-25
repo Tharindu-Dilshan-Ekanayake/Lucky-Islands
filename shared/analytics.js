@@ -49,7 +49,9 @@ export function summarize(events) {
     deaths: {
       total: totalDeaths,
       killedByPlayerPct: pct(byPlayer, totalDeaths),
+      // Caught by the rising lava vs fell (or was knocked) into the lava sea.
       lavaPct: pct(deaths.lava || 0, totalDeaths),
+      fellPct: pct(deaths.fell || 0, totalDeaths),
       voidPct: pct(deaths.void || 0, totalDeaths),
       byCause: deaths,
     },

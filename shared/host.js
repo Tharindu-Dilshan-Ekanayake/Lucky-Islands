@@ -1333,13 +1333,15 @@ export class GameHost {
     const killer = killerEid && killerEid !== target.eid ? this.ents.get(killerEid) : null
     const st = this.match?.stats
     if (st && how !== 'left') {
-      st.deaths[how] = (st.deaths[how] || 0) + 1
+      // Falling into the lava sea isn't the lava catching you: told apart for balance.
+      const cause = how === 'lava' && this.match.lavaY < ISLAND_TOP - 2 ? 'fell' : how
+      st.deaths[cause] = (st.deaths[cause] || 0) + 1
       if (killer) {
         st.byPlayer += 1
         if (!st.firstKillMs && this.match.fightStart) st.firstKillMs = this.now() - this.match.fightStart
       }
     }
-    target.diedHow = how
+    target.diedHow = how === 'lava' && this.match && this.match.lavaY < ISLAND_TOP - 2 ? 'fell' : how
     target.diedByPlayer = Boolean(killer)
     target.diedAt = this.now()
     if (killer && killer.zone === 'match') {

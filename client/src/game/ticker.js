@@ -1,3 +1,4 @@
+import { LAVA } from '@shared/balance'
 import { CENTER } from '@shared/maps'
 
 import { setAmbience, setMusicMood, sfx } from '../audio/sfx'
@@ -5,6 +6,7 @@ import { actions, send } from '../net/actions'
 import { getGame } from '../store/game'
 import { runtime } from './runtime'
 import { lobbyLayout } from './world'
+import { t } from '../ui/i18n'
 
 /**
  * The only bridge from per-frame state to the UI: ten times a second, copies the slow
@@ -13,6 +15,7 @@ import { lobbyLayout } from './world'
  */
 export function startGameTicker() {
   let lavaWarned = false
+  let surgeWarned = false
   let lavaLessonAt = 0
   let tutorialSent = false
   let tutorialReported = 0
@@ -59,7 +62,16 @@ export function startGameTicker() {
         lavaWarned = true
         sfx.lavaWarn()
       }
-    } else lavaWarned = false
+      // The surge: from here the lava floods the islands.
+      if (!surgeWarned && runtime.lava.y > LAVA.surgeY + 0.2) {
+        surgeWarned = true
+        sfx.lavaWarn()
+        game.showToast(t('The lava is surging - get high or get to the middle!'), 'error')
+      }
+    } else {
+      lavaWarned = false
+      surgeWarned = false
+    }
 
     // Music and ambience follow where you are and how tight the round is.
     const inRound = runtime.zone !== 'lobby'
