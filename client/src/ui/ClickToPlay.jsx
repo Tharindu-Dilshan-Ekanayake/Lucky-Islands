@@ -5,6 +5,7 @@ import { runtime } from '../game/runtime'
 import { useGame } from '../store/game'
 import { u } from './format'
 import { t } from './i18n'
+import { isTouchDevice } from './device'
 
 /**
  * Desktop: clicking the 3D view captures the mouse (Esc lets it go, for the menus).
@@ -26,9 +27,8 @@ export default function ClickToPlay() {
     return () => window.removeEventListener('mousedown', onDown)
   }, [])
 
-  // Phones and tablets have no mouse to capture: no hint there (touch controls instead).
-  const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
-  if (locked || panel || caseOpen || runtime.input.touch || coarse || (result && result.kind !== 'over')) return null
+  // Touch screens get touch controls, not a mouse hint (the same check TouchControls uses).
+  if (locked || panel || caseOpen || runtime.input.touch || isTouchDevice() || (result && result.kind !== 'over')) return null
   return (
     <div className="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 text-center" style={{ top: '62%' }}>
       <div className="mc-panel txt-o" style={{ padding: `${u(8)} ${u(18)}`, fontSize: u(20), opacity: 0.92 }}>

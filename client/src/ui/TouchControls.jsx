@@ -6,6 +6,7 @@ import { runtime } from '../game/runtime'
 import { useGame } from '../store/game'
 import { u } from './format'
 import GameIcon from './GameIcon'
+import { isTouchDevice } from './device'
 
 /**
  * Phone and tablet controls: a floating stick on the left (its resting spot is shown),
@@ -17,9 +18,6 @@ import GameIcon from './GameIcon'
 const LOOK_SPEED = 0.0055
 const STICK = 64
 
-function isTouchDevice() {
-  return typeof window !== 'undefined' && (window.matchMedia?.('(pointer: coarse)').matches || 'ontouchstart' in window)
-}
 
 /** What the use button does with the item in hand. */
 function actionFor(item) {
