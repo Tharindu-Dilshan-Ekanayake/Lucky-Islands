@@ -173,6 +173,7 @@ function AvatarSlot({ id, equipped, proportions, capeId, local = false }) {
     if (!src) {
       g.visible = false
       active.current = false
+      g.matrixWorldAutoUpdate = false
       return
     }
     g.visible = visible && ready
@@ -186,6 +187,9 @@ function AvatarSlot({ id, equipped, proportions, capeId, local = false }) {
     const behind = dist > 3 && (dx * _dir.x + dy * _dir.y + dz * _dir.z) / dist < -0.2
     frame.current += 1
     active.current = g.visible && !behind && (dist < 22 || frame.current % 2 === 0)
+    // Not posed this frame: three needn't walk its ~60 bones either (the pose and place
+    // are exactly last frame's).
+    g.matrixWorldAutoUpdate = active.current
     if (!active.current) return
     g.position.set(src.x, src.y, src.z)
     // The rig faces +Z; the game's characters face -Z at yaw 0.
