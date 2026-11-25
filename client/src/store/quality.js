@@ -35,6 +35,9 @@ export const PRESETS = {
     botAvatars: true,
     /** No avatar beyond this (blocks): as far as other players are drawn at all. */
     avatarDistance: 110,
+    /** Avatars are posed every frame within this, every other frame within the next, then every third. */
+    avatarPoseFull: 12,
+    avatarPoseHalf: 30,
     remoteNameDistance: 30,
     labelDistance: 50,
   },
@@ -52,6 +55,8 @@ export const PRESETS = {
     avatarCount: 10,
     botAvatars: true,
     avatarDistance: 150,
+    avatarPoseFull: 22,
+    avatarPoseHalf: 60,
     remoteNameDistance: 45,
     labelDistance: 70,
   },
@@ -69,6 +74,8 @@ export const PRESETS = {
     avatarCount: 12,
     botAvatars: true,
     avatarDistance: 200,
+    avatarPoseFull: 30,
+    avatarPoseHalf: 80,
     remoteNameDistance: 60,
     labelDistance: 90,
   },

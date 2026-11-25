@@ -334,11 +334,20 @@ export function mergeBody(rig) {
   body.name = 'merged_body'
   body.castShadow = true
   body.receiveShadow = true
-  // Skinned bounds don't follow the pose; the avatar is always near the camera anyway.
-  body.frustumCulled = false
   parts[0].parent.add(body)
   body.bind(rig.skeleton, parts[0].bindMatrix)
-  for (const mesh of parts) mesh.visible = false
+  // Culled like any mesh, against the rest pose's bounds made roomy enough for any pose
+  // (arms out, a swing): an avatar behind you or off screen isn't drawn or skinned.
+  geometry.computeBoundingSphere()
+  body.boundingSphere = geometry.boundingSphere.clone()
+  body.boundingSphere.radius *= 1.6
+  body.frustumCulled = true
+  // The six original parts stay (a re-merge reads them) but hidden, and out of the
+  // per-frame matrix walk.
+  for (const mesh of parts) {
+    mesh.visible = false
+    mesh.matrixWorldAutoUpdate = false
+  }
   return body
 }
 

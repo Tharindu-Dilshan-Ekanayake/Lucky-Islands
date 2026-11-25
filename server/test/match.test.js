@@ -393,3 +393,12 @@ test('once every real player is out, the bots stop and the round ends', () => {
   host.tick(0.05)
   assert.equal(host.phase, 'ended', 'only bots left: over')
 })
+
+test('alone in the room, the round has bots by default (and the vote says so)', () => {
+  const { host, sent, until } = makeHost(29)
+  host.join('a', 'A')
+  assert.ok(until(() => host.voteStage === 'map'))
+  assert.equal(last(sent.get('a'), 'phase').chosenBots, 'normal')
+  assert.ok(until(() => host.phase === 'cages'))
+  assert.equal(host.aliveFighters().length, 8)
+})

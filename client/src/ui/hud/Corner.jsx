@@ -140,17 +140,6 @@ export function SettingsButton() {
   )
 }
 
-export function NetBadge() {
-  const net = useGame((s) => s.net)
-  if (net.mode === 'online') return null
-  const text = net.mode === 'offline' ? 'OFFLINE · BOTS' : net.message || 'CONNECTING…'
-  return (
-    <div className="mc-panel txt-o absolute" style={{ left: u(14), top: u(18), padding: `${u(4)} ${u(12)}`, fontSize: u(16) }}>
-      {text}
-    </div>
-  )
-}
-
 /** LEVEL UP! with what it gave you. */
 export function LevelUpBanner() {
   const levelUp = useGame((s) => s.levelUp)

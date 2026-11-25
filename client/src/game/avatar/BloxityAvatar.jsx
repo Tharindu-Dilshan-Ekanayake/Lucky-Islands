@@ -127,13 +127,29 @@ export default function BloxityAvatar({ equipped, proportions, motionRef, handRe
             console.warn(`[bloxity] failed to apply ${result.kind}`, err)
           }
         }
+        // Bones are uploaded to the GPU only on frames the body is posed (the pose is
+        // otherwise exactly last frame's): saves a texture upload per avatar per frame.
+        if (rig.skeleton && !rig.skeleton.lazyUpdate) {
+          const skeleton = rig.skeleton
+          const update = skeleton.update.bind(skeleton)
+          let uploaded = false
+          skeleton.update = () => {
+            if (uploaded && activeRef?.current === false) return
+            uploaded = true
+            update()
+          }
+          skeleton.lazyUpdate = true
+        }
         if (!custom) {
           try {
             disposeMergedBody(holder.current)
             holder.current = mergeBody(rig)
           } catch (err) {
             console.warn('[bloxity] could not merge the body; drawing its parts', err)
-            for (const mesh of rig.skinnedMeshes) mesh.visible = true
+            for (const mesh of rig.skinnedMeshes) {
+              mesh.visible = true
+              mesh.matrixWorldAutoUpdate = true
+            }
           }
         }
         setAssembled(true)
@@ -154,7 +170,7 @@ export default function BloxityAvatar({ equipped, proportions, motionRef, handRe
         })
       }
     }
-  }, [rig, equipped, custom, baseRest])
+  }, [rig, equipped, custom, baseRest, activeRef])
 
   // Frees what this avatar made when it goes (players come and go every round).
   useEffect(() => {

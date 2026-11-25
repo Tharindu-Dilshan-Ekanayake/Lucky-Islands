@@ -166,7 +166,7 @@ export function BottomBar() {
         </div>
       )}
       <EffectChips effects={me.effects} />
-      <div className="flex w-full items-end justify-between" style={{ gap: u(16) }}>
+      <div className="hearts-row flex w-full items-end justify-between" style={{ gap: u(16) }}>
         <Hearts hp={me.hp} maxHp={me.maxHp} />
         {me.kills > 0 && (
           <div className="txt-o" style={{ fontSize: u(18), color: '#ff8a8a' }}>
@@ -174,7 +174,7 @@ export function BottomBar() {
           </div>
         )}
       </div>
-      <div className="pointer-events-auto flex" style={{ gap: u(3) }}>
+      <div className="hotbar pointer-events-auto flex" style={{ gap: u(3) }}>
         {Array.from({ length: 9 }, (_, i) => {
           const slot = me.inv[i]
           return (

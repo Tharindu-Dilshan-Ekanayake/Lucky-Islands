@@ -418,6 +418,7 @@ export function thinkBot(host, ent, dt, now) {
         const key = `${l.x},${l.y},${l.z}`
         if (brain.digKey !== key) {
           brain.digKey = key
+          host.toWatchers(ent, 'act', { eid: ent.eid, kind: 'dig', x: l.x, y: l.y, z: l.z })
           brain.digUntil = now + breakSeconds(BLOCKS[w.get(l.x, l.y, l.z)].hard, 'fist') * 1000 * (1.2 + brain.random() * 0.5)
         }
         if (now > brain.swingAt) {
