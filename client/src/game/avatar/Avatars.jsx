@@ -35,11 +35,14 @@ export default function Avatars() {
      * avatar is the expensive part, so slots don't flip as people move about). */
     let members = new Set()
     const refresh = () => {
-      const slotsFree = Math.max(0, getQuality().avatarCount - 1)
+      const q = getQuality()
+      const slotsFree = Math.max(0, q.avatarCount - 1)
       const b = runtime.player.body
+      // Real players before bots, then nearest first; bots only where the preset allows.
       const ranked = [...runtime.remotes.values()]
         .map((r) => ({ r, d: Math.hypot(r.x - b.x, r.z - b.z) }))
-        .sort((a, c) => a.d - c.d)
+        .filter(({ r, d }) => d <= q.avatarDistance && (q.botAvatars || !r.bot))
+        .sort((a, c) => (a.r.bot ? 1 : 0) - (c.r.bot ? 1 : 0) || a.d - c.d)
       const keepRank = slotsFree + 2
       const next = new Set()
       ranked.forEach(({ r }, i) => {

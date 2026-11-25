@@ -26,8 +26,15 @@ export const PRESETS = {
     maxTexture: 512,
     /** Other players drawn this far; names shown this far. */
     remoteDrawDistance: 110,
-    /** Characters drawn as their Bloxity avatar (nearest first, you included); the rest blocky. */
-    avatarCount: 4,
+    /**
+     * Characters drawn as their Bloxity avatar (you included; real players first, then
+     * the nearest); the rest blocky. On LOW every real player in the room (8 max) gets
+     * one, and bots stay blocky.
+     */
+    avatarCount: 8,
+    botAvatars: false,
+    /** No avatar beyond this (blocks): too small to tell apart anyway. */
+    avatarDistance: 40,
     remoteNameDistance: 30,
     labelDistance: 50,
   },
@@ -43,6 +50,8 @@ export const PRESETS = {
     maxTexture: 1024,
     remoteDrawDistance: 150,
     avatarCount: 10,
+    botAvatars: true,
+    avatarDistance: 70,
     remoteNameDistance: 45,
     labelDistance: 70,
   },
@@ -58,6 +67,8 @@ export const PRESETS = {
     maxTexture: 1024,
     remoteDrawDistance: 200,
     avatarCount: 12,
+    botAvatars: true,
+    avatarDistance: 100,
     remoteNameDistance: 60,
     labelDistance: 90,
   },
