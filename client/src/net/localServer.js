@@ -1,6 +1,3 @@
-import { GameHost } from '@shared/host'
-import { normalizeProfile } from '@shared/logic'
-import { PlayerSession } from '@shared/session'
 
 const SAVE_KEY = 'lsb.save.v1'
 const SAVE_MS = 5000
@@ -45,6 +42,32 @@ export function createLocalServer(options) {
   return createInlineServer(options)
 }
 
+/**
+ * The in-thread fallback, its host loaded on demand (it's a big module, and almost
+ * every browser has workers): messages sent before it's ready are queued.
+ */
+function createInlineServer(options) {
+  const queue = []
+  let real = null
+  let closed = false
+  Promise.all([import('@shared/host'), import('@shared/logic'), import('@shared/session')]).then(([{ GameHost }, { normalizeProfile }, { PlayerSession }]) => {
+    if (closed) return
+    real = startInline(options, { GameHost, normalizeProfile, PlayerSession })
+    for (const [type, payload] of queue) real.send(type, payload)
+    queue.length = 0
+  })
+  return {
+    send(type, payload) {
+      if (real) real.send(type, payload)
+      else queue.push([type, payload])
+    },
+    close() {
+      closed = true
+      real?.close()
+    },
+  }
+}
+
 function createWorkerServer({ id, name, onEvent }) {
   const worker = new Worker(new URL('./hostWorker.js', import.meta.url), { type: 'module' })
   let lastSave = null
@@ -80,7 +103,7 @@ function createWorkerServer({ id, name, onEvent }) {
 /** Host messages that carry live objects the host keeps mutating: the UI gets a copy. */
 const COPY = new Set(['me', 'roster', 'phase', 'profile', 'loot', 'match', 'caseResult', 'roundReward'])
 
-function createInlineServer({ id, name, onEvent }) {
+function startInline({ id, name, onEvent }, { GameHost, normalizeProfile, PlayerSession }) {
   const profile = normalizeProfile(loadSave(), id, name)
   const emit = (type, payload) => onEvent(type, payload && COPY.has(type) ? structuredClone(payload) : payload)
 

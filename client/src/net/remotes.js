@@ -1,4 +1,4 @@
-import { ANIMS, ITEM_IDS } from '@shared/host'
+import { ANIMS, ITEM_IDS } from '@shared/protocol'
 
 import { pushFx, runtime } from '../game/runtime'
 

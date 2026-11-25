@@ -48,8 +48,9 @@ import { B, BLOCKS, blockKey, isLucky, isSolidBlock, raycastVoxels, rayBox } fro
  *   `boom`, `tnt`, `bolt`, `swing`, `dead`, `win`, `toast`
  */
 
-export const ANIMS = ['idle', 'walk', 'sprint', 'sneak', 'air']
-export const ITEM_IDS = Object.keys(ITEMS)
+import { ANIMS, ITEM_IDS } from './protocol.js'
+
+export { ANIMS, ITEM_IDS }
 const SIM_HZ = 20
 /** Right after knockback or a teleport: a loose cap only (blocks/s, plus slack). */
 const MAX_SPEED = 16

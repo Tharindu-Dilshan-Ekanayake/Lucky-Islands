@@ -57,6 +57,20 @@ export default defineConfig({
   },
   // The offline host runs in a module worker (net/hostWorker.js) importing ../shared.
   worker: { format: 'es' },
+  build: {
+    rollupOptions: {
+      output: {
+        // Libraries in their own long-cached chunk: a game update re-downloads only the
+        // (much smaller) game code. three's examples (loaders) stay with the lazy chunks
+        // that use them.
+        advancedChunks: {
+          groups: [{ name: 'vendor', test: /node_modules[\/](three[\/](?!examples)|(react|react-dom|scheduler|@react-three|zustand|its-fine|suspend-react)[\/])/ }],
+        },
+      },
+    },
+    // three + React + R3F is one ~1 MB (~300 KB gzip) chunk on purpose.
+    chunkSizeWarningLimit: 1200,
+  },
   server: {
     // ../shared lives outside the client root.
     fs: { allow: ['..'] },
