@@ -86,6 +86,45 @@ export const MAPS = {
     /** Ember's dead trees: bare trunks; its "flowers" are glowing lamps, rarely. */
     decoChance: 0.03,
   },
+  autumn: {
+    name: 'Autumn Woods',
+    top: B.GRASS,
+    fill: B.DIRT,
+    deep: B.STONE,
+    speck: B.ORE,
+    trunk: B.LOG,
+    crown: B.WOOL_YELLOW,
+    /** Each tree turns its own colour. */
+    crowns: [B.WOOL_RED, B.WOOL_YELLOW, B.WOOL_YELLOW, B.LEAVES],
+    deco: [B.FLOWER_RED, B.FLOWER_YELLOW, B.TALL_GRASS],
+    sky: ['#e08a3c', '#ffe2b8'],
+  },
+  marble: {
+    name: 'Marble Temple',
+    top: B.QUARTZ,
+    fill: B.QUARTZ,
+    deep: B.STONE_BRICKS,
+    speck: B.GOLD,
+    /** No trees: marble columns with gold caps. */
+    trunk: B.QUARTZ,
+    crown: null,
+    pillars: true,
+    deco: [B.LAMP],
+    decoChance: 0.02,
+    sky: ['#9fb6ff', '#f3eaff'],
+  },
+  jungle: {
+    name: 'Jungle Ruins',
+    top: B.GRASS,
+    fill: B.DIRT,
+    deep: B.STONE_BRICKS,
+    speck: B.DARKSTONE,
+    trunk: B.LOG,
+    crown: B.LEAVES,
+    deco: [B.TALL_GRASS, B.TALL_GRASS, B.FLOWER_RED],
+    decoChance: 0.28,
+    sky: ['#3fae8a', '#d8ffe9'],
+  },
 }
 export const MAP_IDS = Object.keys(MAPS)
 
@@ -128,6 +167,13 @@ function island(world, rng, map, cx, cz, radius, top, depth = 9) {
 }
 
 function tree(world, map, x, y, z, rng) {
+  if (map.pillars) {
+    // A marble column with a gold cap.
+    const h = 3 + Math.floor(rng() * 2)
+    for (let i = 0; i < h; i += 1) world.set(x, y + i, z, B.QUARTZ)
+    world.set(x, y + h, z, B.GOLD)
+    return
+  }
   if (!map.crown && map.trunk === B.LOG) {
     // A dead tree: a crooked trunk with a stub of a branch.
     const h = 3 + Math.floor(rng() * 2)
@@ -144,6 +190,7 @@ function tree(world, map, x, y, z, rng) {
   const h = 4 + Math.floor(rng() * 2)
   for (let i = 0; i < h; i += 1) world.set(x, y + i, z, map.trunk)
   if (!map.crown) return
+  const crown = map.crowns ? map.crowns[Math.floor(rng() * map.crowns.length)] : map.crown
   const cy = y + h - 1
   for (let dy = -1; dy <= 2; dy += 1) {
     const r = dy >= 1 ? 1 : 2
@@ -151,7 +198,7 @@ function tree(world, map, x, y, z, rng) {
       for (let dz = -r; dz <= r; dz += 1) {
         if (Math.abs(dx) === r && Math.abs(dz) === r && (dy === 2 || rng() < 0.5)) continue
         if (dx === 0 && dz === 0 && dy < 1) continue
-        if (world.get(x + dx, cy + dy, z + dz) === B.AIR) world.set(x + dx, cy + dy, z + dz, map.crown)
+        if (world.get(x + dx, cy + dy, z + dz) === B.AIR) world.set(x + dx, cy + dy, z + dz, crown)
       }
     }
   }
@@ -229,6 +276,61 @@ function landmark(world, mapId, cx, top, cz) {
     for (const [dx, dz] of [[-6, 0], [6, 0], [0, -6], [0, 6]]) world.set(cx + dx, y0, cz + dz, B.LAMP)
     // The Mega block sits on the crater's rim.
     return { x: cx + 2, y, z: cz }
+  }
+  if (mapId === 'autumn') {
+    // One giant autumn tree: a 2x2 trunk, a wide crown in red and gold, a ring of
+    // fallen leaves around it.
+    for (let y = y0; y < y0 + 8; y += 1) fill(cx, y, cz, cx + 1, y, cz + 1, B.LOG)
+    const top = y0 + 8
+    for (let dy = -2; dy <= 2; dy += 1) {
+      const r = dy === 2 ? 2 : dy === -2 ? 3 : 4
+      for (let x = cx - r; x <= cx + 1 + r; x += 1) {
+        for (let z = cz - r; z <= cz + 1 + r; z += 1) {
+          const ex = Math.max(cx - x, x - cx - 1, 0)
+          const ez = Math.max(cz - z, z - cz - 1, 0)
+          if (ex * ex + ez * ez > r * r + 1) continue
+          if (world.get(x, top + dy, z) === B.AIR) world.set(x, top + dy, z, (x + z + dy) % 3 === 0 ? B.WOOL_RED : B.WOOL_YELLOW)
+        }
+      }
+    }
+    for (let a = 0; a < 16; a += 1) {
+      const x = Math.round(cx + 0.5 + Math.cos(a / 2.55) * 5)
+      const z = Math.round(cz + 0.5 + Math.sin(a / 2.55) * 5)
+      if (world.get(x, y0, z) === B.AIR && world.isSolid(x, y0 - 1, z)) world.set(x, y0 - 1, z, a % 2 ? B.WOOL_RED : B.WOOL_YELLOW)
+    }
+    return { x: cx, y: top + 3, z: cz }
+  }
+  if (mapId === 'marble') {
+    // A temple: a stepped platform, a ring of columns, a gold roof.
+    fill(cx - 5, y0, cz - 5, cx + 5, y0, cz + 5, B.QUARTZ)
+    fill(cx - 4, y0 + 1, cz - 4, cx + 4, y0 + 1, cz + 4, B.QUARTZ)
+    for (const [dx, dz] of [[-4, -4], [-4, 0], [-4, 4], [0, -4], [0, 4], [4, -4], [4, 0], [4, 4]]) {
+      fill(cx + dx, y0 + 2, cz + dz, cx + dx, y0 + 5, cz + dz, B.QUARTZ)
+    }
+    fill(cx - 5, y0 + 6, cz - 5, cx + 5, y0 + 6, cz + 5, B.QUARTZ)
+    fill(cx - 3, y0 + 7, cz - 3, cx + 3, y0 + 7, cz + 3, B.GOLD)
+    fill(cx - 1, y0 + 8, cz - 1, cx + 1, y0 + 8, cz + 1, B.GOLD)
+    world.set(cx, y0 + 2, cz, B.LAMP)
+    return { x: cx, y: y0 + 9, z: cz }
+  }
+  if (mapId === 'jungle') {
+    // An overgrown stepped temple with lamps at the corners and a shrine on top.
+    let r = 5
+    let y = y0
+    while (r >= 2) {
+      for (let x = cx - r; x <= cx + r; x += 1) {
+        for (let z = cz - r; z <= cz + r; z += 1) {
+          const edge = Math.abs(x - cx) === r || Math.abs(z - cz) === r
+          world.set(x, y, z, edge && (x * 5 + z * 3 + y) % 4 === 0 ? B.LEAVES : edge && (x + z) % 5 === 0 ? B.DARKSTONE : B.STONE_BRICKS)
+        }
+      }
+      for (const [dx, dz] of [[-r, -r], [r, -r], [-r, r], [r, r]]) world.set(cx + dx, y + 1, cz + dz, B.LAMP)
+      r -= 1
+      y += 1
+    }
+    fill(cx - 1, y, cz - 1, cx + 1, y + 1, cz + 1, B.STONE_BRICKS)
+    // The Mega block sits in the shrine, open to the sky.
+    return { x: cx, y: y + 1, z: cz }
   }
   if (mapId === 'frost') {
     // An ice tower with a lookout on top.

@@ -101,7 +101,7 @@ BLOCKS[B.FLOWER_YELLOW] = def('Dandelion', 'flower_yellow', 0, null, { solid: fa
 BLOCKS[B.TALL_GRASS] = def('Tall Grass', 'tall_grass', 0, null, { solid: false, render: 'cross' })
 BLOCKS[B.ORE] = def('Gem Ore', 'ore', 1.6, 'stone_bricks')
 BLOCKS[B.WATER] = def('Water', 'water', Infinity, null, { solid: false })
-BLOCKS[B.QUARTZ] = def('Quartz', ['quartz_top', 'quartz', 'quartz_top'], 2, null)
+BLOCKS[B.QUARTZ] = def('Quartz', ['quartz_top', 'quartz', 'quartz_top'], 0.9, 'stone_bricks')
 
 export const isSolidBlock = (id) => Boolean(BLOCKS[id]?.solid)
 export const isLucky = (id) => Boolean(BLOCKS[id]?.lucky)
