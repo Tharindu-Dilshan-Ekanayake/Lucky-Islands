@@ -24,6 +24,10 @@ test('a round reports how it went, anonymously, and the summary reads it', () =>
   host.kill(host.entOf('p'), null, 'void')
   while (host.phase === 'fight') step()
   host.leave('p')
+  // Walking out mid-round still counts that round.
+  host.join('q', 'Quinn')
+  while (host.phase !== 'fight') step()
+  host.leave('q')
 
   const types = events.map((e) => e.type)
   assert.deepEqual(types.filter((x) => x === 'tutorial').length, 1, 'each step once, junk ignored')
@@ -34,13 +38,14 @@ test('a round reports how it went, anonymously, and the summary reads it', () =>
   assert.equal(mine.died, 'void')
   assert.equal(mine.byPlayer, false)
   // Nothing personal in any event.
-  assert.ok(!JSON.stringify(events).includes('Pat'))
+  assert.ok(!JSON.stringify(events).includes('Pat') && !JSON.stringify(events).includes('Quinn'))
 
   const s = summarize(events)
   assert.equal(s.rounds.count, 1)
-  assert.equal(s.players.rounds, 1)
-  assert.equal(s.sessions.count, 1)
+  assert.equal(s.players.rounds, 2)
+  assert.equal(s.sessions.count, 2)
   assert.equal(s.sessions.avgRounds, 1)
+  assert.equal(s.sessions.quitWhere['match/fight'], 1)
   assert.equal(s.tutorial.reachedStep[1], 1)
   assert.ok(s.deaths.total >= 1)
   assert.ok(s.rounds.avgLengthS <= ROUND.fightMs / 1000)

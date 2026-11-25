@@ -124,17 +124,19 @@ export class GameHost {
     const member = this.members.get(cid)
     if (!member) return
     const ent = this.ents.get(member.eid)
-    // Where people quit, and after how long.
+    const zone = ent?.zone || 'lobby'
+    const phase = this.phase
+    if (ent?.zone === 'match' && ent.alive && this.match) {
+      this.kill(ent, null, 'left')
+    }
+    // Where people quit, and after how long (the round they walked out of counts).
     this.track('leave', {
-      zone: ent?.zone || 'lobby',
-      phase: this.phase,
+      zone,
+      phase,
       sessionMs: this.now() - member.joinedAt,
       rounds: member.rounds,
       tutorial: member.tutorial,
     })
-    if (ent?.zone === 'match' && ent.alive && this.match) {
-      this.kill(ent, null, 'left')
-    }
     this.ents.delete(member.eid)
     this.members.delete(cid)
     this.rosterDirty = true
