@@ -73,8 +73,10 @@ export class GameHost {
    * @param {() => number} [o.now]
    * @param {() => number} [o.random]
    */
-  constructor({ send, onReward = () => {}, now = () => Date.now(), random = Math.random, log = (msg) => console.warn(msg) }) {
+  constructor({ send, onReward = () => {}, onAnalytics = () => {}, now = () => Date.now(), random = Math.random, log = (msg) => console.warn(msg) }) {
     this.sendTo = send
+    /** Anonymous gameplay events (no names or ids): 'round', 'player_round', 'leave', 'tutorial'. */
+    this.onAnalytics = onAnalytics
     this.log = log
     this.onReward = onReward
     this.now = now
@@ -106,7 +108,7 @@ export class GameHost {
 
   join(cid, name, look = {}) {
     const eid = this.nextEid++
-    const member = { cid, eid, name, afk: false, vote: null, mapVote: null, botVote: null }
+    const member = { cid, eid, name, afk: false, vote: null, mapVote: null, botVote: null, joinedAt: this.now(), rounds: 0, tutorial: 0 }
     this.members.set(cid, member)
     const ent = this.makeEnt(eid, name, { cid, cape: look.cape, sword: look.sword, level: look.level || 1 })
     this.toLobby(ent, false)
@@ -122,6 +124,14 @@ export class GameHost {
     const member = this.members.get(cid)
     if (!member) return
     const ent = this.ents.get(member.eid)
+    // Where people quit, and after how long.
+    this.track('leave', {
+      zone: ent?.zone || 'lobby',
+      phase: this.phase,
+      sessionMs: this.now() - member.joinedAt,
+      rounds: member.rounds,
+      tutorial: member.tutorial,
+    })
     if (ent?.zone === 'match' && ent.alive && this.match) {
       this.kill(ent, null, 'left')
     }
@@ -224,6 +234,15 @@ export class GameHost {
           this.phaseDirty = true
         }
         return
+      case 'tut': {
+        // How far through the tutorial people get (each step counted once per visit).
+        const step = Math.floor(num(p.step, 0))
+        if (step > member.tutorial && step <= 5) {
+          member.tutorial = step
+          this.track('tutorial', { step })
+        }
+        return
+      }
       case 'qc': {
         // Quick chat: one of the fixed lines, rate limited, to everyone who can see you.
         const ent = this.entOf(cid)
@@ -476,6 +495,8 @@ export class GameHost {
       fightStart: 0,
       fighters: 0,
       lavaY: LAVA.startY,
+      humans: humans.length,
+      stats: { deaths: {}, byPlayer: 0, firstKillMs: 0, lucky: 0, placed: 0 },
     }
     this.match.botLevel = botLevel
     for (const m of this.members.values()) {
@@ -524,6 +545,8 @@ export class GameHost {
       ent.kills = 0
       ent.lucky = 0
       ent.placed = 0
+      ent.diedHow = null
+      ent.diedAt = 0
       ent.lastHitBy = null
       ent.lastHurtAt = 0
       ent.dirty = true
@@ -590,6 +613,8 @@ export class GameHost {
     ent.kills = 0
     ent.lucky = 0
     ent.placed = 0
+    ent.diedHow = null
+    ent.diedAt = 0
     ent.effects = {}
     ent.lastHitBy = null
     ent.lastHurtAt = 0
@@ -724,6 +749,7 @@ export class GameHost {
   }
 
   timeUp() {
+    this.match.timeUp = true
     const alive = this.aliveFighters()
     alive.sort((a, b) => b.hp - a.hp || b.kills - a.kills)
     this.endMatch(alive[0] || null)
@@ -755,6 +781,25 @@ export class GameHost {
 
   endMatch(winner) {
     if (this.phase === 'ended') return
+    const m = this.match
+    if (m.fightStart) {
+      this.track('round', {
+        mode: m.mode,
+        map: m.mapId,
+        botLevel: m.botLevel,
+        fighters: m.fighters,
+        humans: m.humans,
+        durationMs: this.now() - m.fightStart,
+        reason: m.timeUp ? 'time' : 'last-standing',
+        winnerBot: winner ? Boolean(winner.bot) : null,
+        deaths: m.stats.deaths,
+        byPlayer: m.stats.byPlayer,
+        firstKillMs: m.stats.firstKillMs,
+        lucky: m.stats.lucky,
+        placed: m.stats.placed,
+        lavaY: Math.round(m.lavaY * 10) / 10,
+      })
+    }
     this.setPhase('ended', ROUND.endMs)
     const teamSize = this.match.teamSize || 1
     const winTeam = winner ? winner.team : null
@@ -806,10 +851,35 @@ export class GameHost {
     if (announce && ent.cid) this.sendTo(ent.cid, 'lobby', {})
   }
 
+  /** An analytics event; never lets a failing sink break the game. */
+  track(type, data) {
+    try {
+      this.onAnalytics(type, data)
+    } catch {
+      // Analytics are best effort.
+    }
+  }
+
   /** A player's round is over: their cash, kills and (maybe) the win. */
   reward(ent, placement) {
     if (!ent.cid || ent.rewarded === this.match) return
     ent.rewarded = this.match
+    const member = this.members.get(ent.cid)
+    if (member) member.rounds += 1
+    const m = this.match
+    this.track('player_round', {
+      mode: m.mode,
+      map: m.mapId,
+      placement,
+      win: placement === 1,
+      died: ent.diedHow || null,
+      byPlayer: Boolean(ent.diedByPlayer),
+      survivedMs: m.fightStart ? (ent.diedAt || this.now()) - m.fightStart : 0,
+      kills: ent.kills,
+      lucky: ent.lucky || 0,
+      placed: ent.placed || 0,
+      level: ent.level || 1,
+    })
     this.onReward(ent.cid, {
       kills: ent.kills,
       lucky: ent.lucky || 0,
@@ -934,6 +1004,7 @@ export class GameHost {
   openLucky(ent, x, y, z, rare) {
     const mode = MODES[this.match.mode]
     ent.lucky = (ent.lucky || 0) + 1
+    this.match.stats.lucky += 1
     const got = []
     let text = ''
     let bad = null
@@ -1008,6 +1079,7 @@ export class GameHost {
       this.setBlock(x, y, z, item.block)
     }
     ent.placed = (ent.placed || 0) + 1
+    this.match.stats.placed += 1
     return true
   }
 
@@ -1259,6 +1331,17 @@ export class GameHost {
     target.dirty = true
     const placement = this.aliveFighters().length + 1
     const killer = killerEid && killerEid !== target.eid ? this.ents.get(killerEid) : null
+    const st = this.match?.stats
+    if (st && how !== 'left') {
+      st.deaths[how] = (st.deaths[how] || 0) + 1
+      if (killer) {
+        st.byPlayer += 1
+        if (!st.firstKillMs && this.match.fightStart) st.firstKillMs = this.now() - this.match.fightStart
+      }
+    }
+    target.diedHow = how
+    target.diedByPlayer = Boolean(killer)
+    target.diedAt = this.now()
     if (killer && killer.zone === 'match') {
       killer.kills += 1
       killer.dirty = true

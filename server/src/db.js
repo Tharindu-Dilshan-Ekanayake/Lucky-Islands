@@ -62,12 +62,20 @@ async function openMongo(uri) {
   const db = client.db()
   const profiles = db.collection('profiles')
   const gems = db.collection('gem_grants')
+  const events = db.collection('events')
   await Promise.all([
     ...Object.values(BOARDS).map((field) => profiles.createIndex({ [field]: -1 })),
     gems.createIndex({ userId: 1, applied: 1 }),
+    events.createIndex({ at: -1 }),
   ])
 
   return {
+    async addEvents(list) {
+      if (list.length) await events.insertMany(list.map((e) => ({ ...e })))
+    },
+    async eventsSince(at, limit) {
+      return events.find({ at: { $gte: at } }, { projection: { _id: 0 } }).sort({ at: -1 }).limit(limit).toArray()
+    },
     async load(id, owner) {
       const doc = await profiles.findOneAndUpdate({ _id: id }, { $set: { owner } }, { returnDocument: 'after' })
       return doc ? doc.data : null
@@ -178,6 +186,12 @@ async function openSqlite(path) {
       applied_by TEXT
     );
     CREATE INDEX IF NOT EXISTS gem_grants_user ON gem_grants (user_id, applied);
+    CREATE TABLE IF NOT EXISTS events (
+      at INTEGER NOT NULL,
+      type TEXT NOT NULL,
+      data TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS events_at ON events (at DESC);
   `)
   // Files from before guest carry-over lack the column.
   if (!db.prepare('PRAGMA table_info(profiles)').all().some((c) => c.name === 'carried_to')) {
@@ -187,6 +201,16 @@ async function openSqlite(path) {
 
   // One process owns this file, so `owner` has nothing to guard against here.
   return {
+    async addEvents(list) {
+      const insert = db.prepare('INSERT INTO events (at, type, data) VALUES (?, ?, ?)')
+      for (const e of list) insert.run(e.at, e.type, JSON.stringify(e.data))
+    },
+    async eventsSince(at, limit) {
+      return db
+        .prepare('SELECT at, type, data FROM events WHERE at >= ? ORDER BY at DESC LIMIT ?')
+        .all(at, limit)
+        .map((r) => ({ at: r.at, type: r.type, data: JSON.parse(r.data) }))
+    },
     async load(id) {
       return db.prepare('SELECT data FROM profiles WHERE id = ?').get(id)?.data ?? null
     },
@@ -342,3 +366,32 @@ export const releaseGemGrant = (transactionId, by) => store.releaseGem(transacti
 
 /** Top `limit` players per board: `{ wins: [{ name, value }], ... }`. */
 export const topPlayers = (limit = 10) => store.top(limit)
+
+// --- Analytics: anonymous gameplay events, written in batches -------------------------------
+
+const eventQueue = []
+let flushTimer = null
+
+/** Queues an event (`type`, plain-object `data`, no personal data); written within ~5 s. */
+export function recordEvent(type, data) {
+  if (!store || eventQueue.length > 5000) return
+  eventQueue.push({ at: Date.now(), type, data })
+  flushTimer ||= setTimeout(flushEvents, 5000)
+}
+
+export async function flushEvents() {
+  flushTimer = null
+  if (!store || !eventQueue.length) return
+  const batch = eventQueue.splice(0, eventQueue.length)
+  try {
+    await store.addEvents(batch)
+  } catch (err) {
+    console.warn('[analytics] write failed', err?.message || err)
+  }
+}
+
+/** Events from the last `days` days, newest first (at most `limit`). */
+export async function recentEvents(days = 7, limit = 50_000) {
+  await flushEvents()
+  return store.eventsSince(Date.now() - days * 86_400_000, limit)
+}

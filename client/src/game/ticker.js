@@ -1,7 +1,7 @@
 import { CENTER } from '@shared/maps'
 
 import { setAmbience, setMusicMood, sfx } from '../audio/sfx'
-import { actions } from '../net/actions'
+import { actions, send } from '../net/actions'
 import { getGame } from '../store/game'
 import { runtime } from './runtime'
 import { lobbyLayout } from './world'
@@ -15,6 +15,7 @@ export function startGameTicker() {
   let lavaWarned = false
   let lavaLessonAt = 0
   let tutorialSent = false
+  let tutorialReported = 0
   let lastCount = -1
   const id = setInterval(() => {
     const game = getGame()
@@ -40,6 +41,11 @@ export function startGameTicker() {
     if (game.tutorial === 4) {
       lavaLessonAt ||= performance.now()
       if (performance.now() - lavaLessonAt > 9000 || (runtime.zone === 'match' && b.y > runtime.lava.y + 12 && runtime.lava.y > 6.3)) game.setTutorial(5)
+    }
+    // Analytics: how far through the tutorial people get.
+    if (game.tutorial > tutorialReported && !game.profile.tutorial) {
+      tutorialReported = game.tutorial
+      send('tut', { step: game.tutorial })
     }
     if (game.tutorial >= 5 && !game.profile.tutorial && !tutorialSent) {
       tutorialSent = true

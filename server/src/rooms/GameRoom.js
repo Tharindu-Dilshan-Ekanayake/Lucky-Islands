@@ -5,7 +5,7 @@ import { GameHost } from '../../../shared/host.js'
 import { PlayerSession } from '../../../shared/session.js'
 import { resolveIdentity, verifyAdReward } from '../bloxityApi.js'
 import { reportLeaver } from '../bloxityLeaderboards.js'
-import { carryOverGuest, loadProfile, saveProfile } from '../db.js'
+import { carryOverGuest, loadProfile, recordEvent, saveProfile } from '../db.js'
 import { applyGemsForSession } from '../gems.js'
 import { getLeaderboards } from '../leaderboards.js'
 import { activePlayers, liveRooms } from '../registry.js'
@@ -24,7 +24,7 @@ const POD = process.env.POD_NAME || `local-${process.pid}`
 const GEMS_CHECK_MS = 2000
 
 /** Round messages the host handles; everything else is a lobby/profile action. */
-const HOST_MESSAGES = new Set(['pos', 'sel', 'dig', 'break', 'place', 'attack', 'use', 'swing', 'vote', 'afk', 'spectate', 'lobby', 'look', 'qc', 'voteMap', 'voteBots', 'joinRound'])
+const HOST_MESSAGES = new Set(['tut', 'pos', 'sel', 'dig', 'break', 'place', 'attack', 'use', 'swing', 'vote', 'afk', 'spectate', 'lobby', 'look', 'qc', 'voteMap', 'voteBots', 'joinRound'])
 /** Profile actions the session handles. */
 const SESSION_MESSAGES = new Set(['openCase', 'equip', 'claimDaily', 'welcomeGift', 'tutorialDone'])
 
@@ -64,6 +64,7 @@ export class GameRoom extends Room {
     }
     this.host = new GameHost({
       send: (sid, type, payload) => this.sendTo(sid, type, payload),
+      onAnalytics: (type, data) => recordEvent(type, data),
       onReward: (sid, result) => {
         const member = this.members.get(sid)
         if (!member || member.kicked) return
