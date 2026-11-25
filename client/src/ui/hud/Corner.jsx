@@ -63,7 +63,7 @@ export function NameTag() {
   )
 }
 
-/** Quick chat: a button (and the T key) opening ten one-tap lines. */
+/** Quick chat: a button under your name tag (and the T key) opening ten one-tap lines. */
 export function QuickChat() {
   const open = useGame((s) => s.quickChat)
   const setOpen = useGame((s) => s.setQuickChat)
@@ -73,13 +73,13 @@ export function QuickChat() {
         className="pointer-events-auto absolute flex items-center justify-center"
         color="#2b8fd8"
         title="Quick chat (T)"
-        style={{ left: u(14), top: u(76), width: u(52), height: u(52), padding: 0, fontSize: u(24) }}
+        style={{ right: u(76), top: u(88), width: u(52), height: u(52), padding: 0, fontSize: u(24) }}
         onClick={() => setOpen(!open)}
       >
         💬
       </Button>
       {open && (
-        <div className="mc-panel pointer-events-auto pop-in absolute grid" style={{ left: u(76), top: u(76), zIndex: 25, padding: u(8), gap: u(6), gridTemplateColumns: 'repeat(2, auto)' }}>
+        <div className="mc-panel pointer-events-auto pop-in absolute grid" style={{ right: u(14), top: u(150), zIndex: 25, padding: u(8), gap: u(6), gridTemplateColumns: 'repeat(2, auto)' }}>
           {QUICK_CHAT.map((text, i) => (
             <button
               key={text}
@@ -103,7 +103,7 @@ export function QuickChat() {
   )
 }
 
-/** The settings button, top left, in the lobby and in a round alike. */
+/** The settings button, under your name tag, in the lobby and in a round alike. */
 export function SettingsButton() {
   const open = useGame((s) => s.openPanel)
   return (
@@ -111,7 +111,7 @@ export function SettingsButton() {
       className="pointer-events-auto absolute flex items-center justify-center"
       color="#4b5563"
       title="Settings"
-      style={{ left: u(14), top: u(14), width: u(52), height: u(52), padding: 0 }}
+      style={{ right: u(14), top: u(88), width: u(52), height: u(52), padding: 0 }}
       onClick={() => {
         exitPointerLock()
         open('settings')
@@ -127,7 +127,7 @@ export function NetBadge() {
   if (net.mode === 'online') return null
   const text = net.mode === 'offline' ? 'OFFLINE · BOTS' : net.message || 'CONNECTING…'
   return (
-    <div className="mc-panel txt-o absolute" style={{ left: u(78), top: u(24), padding: `${u(4)} ${u(12)}`, fontSize: u(16) }}>
+    <div className="mc-panel txt-o absolute" style={{ left: u(14), top: u(18), padding: `${u(4)} ${u(12)}`, fontSize: u(16) }}>
       {text}
     </div>
   )
@@ -170,7 +170,7 @@ export function KillFeed() {
   if (!feed.length) return null
   const how = { melee: '⚔', arrow: '➶', snowball: '❄', tnt: '✹', lava: '🔥', void: '↓', burn: '🔥', lightning: 'ϟ', left: '⇥', pearl: '✦' }
   return (
-    <div className="absolute flex flex-col items-end" style={{ right: u(14), top: u(84), gap: u(4) }}>
+    <div className="absolute flex flex-col items-end" style={{ right: u(14), top: u(152), gap: u(4) }}>
       {feed.map((f) => (
         <div key={f.id} className="mc-panel txt-o slide-in-right" style={{ padding: `${u(3)} ${u(10)}`, fontSize: u(16) }}>
           {f.chat ? (
