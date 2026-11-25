@@ -6,7 +6,7 @@ import { useGame } from '../store/game'
 import { formatClock, u, useNow } from './format'
 import { Button, Fancy } from './kit'
 import { BigCount, BottomBar, Crosshair, LootPopup, Objective, SpectateBar, TeamChip } from './hud/Round'
-import { KillFeed, LevelUpBanner, NameTag, NetBadge, QuickChat, SettingsButton, Toasts } from './hud/Corner'
+import { LevelUpBanner, NetBadge, Toasts, TopRight } from './hud/Corner'
 import { LobbyMenu, PlayerCount, StationPrompt, VoteCards, Wallet, WelcomeGift } from './hud/Lobby'
 import { t } from './i18n'
 
@@ -21,8 +21,6 @@ export default function HUD() {
     <div className="pointer-events-none absolute inset-0 z-10 text-white">
       {/* Every zone change (lobby, round, spectating) fades in from dark. */}
       <div key={zone} className="zone-fade" />
-      <SettingsButton />
-      <QuickChat />
       <NetBadge />
       <TopCenter />
       {zone === 'match' && (
@@ -43,9 +41,8 @@ export default function HUD() {
         </>
       )}
       {zone === 'spec' && <SpectateBar />}
-      <NameTag />
+      <TopRight />
       <LevelUpBanner />
-      <KillFeed />
       <Toasts />
     </div>
   )

@@ -28,7 +28,7 @@ export function NameTag() {
   const name = identity?.displayName || identity?.username || profileName || 'Guest'
   const pfp = identity?.pfp
   return (
-    <div className="name-tag slide-in-right mc-panel absolute" style={{ right: u(14), top: u(14), padding: `${u(5)} ${u(14)} ${u(5)} ${u(5)}`, gap: u(10) }}>
+    <div className="name-tag slide-in-right mc-panel" style={{ padding: `${u(5)} ${u(14)} ${u(5)} ${u(5)}`, gap: u(10) }}>
       <div className="slot flex shrink-0 items-center justify-center overflow-hidden" style={{ width: u(46), height: u(46), padding: 0 }}>
         {pfp ? (
           <img src={pfp} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} draggable={false} />
@@ -63,6 +63,24 @@ export function NameTag() {
   )
 }
 
+/**
+ * The top-right column: your name tag, then the quick chat and settings buttons, then the
+ * kill feed. Stacked in one flex column, so a taller name tag pushes the rest down
+ * instead of covering it.
+ */
+export function TopRight() {
+  return (
+    <div className="absolute flex flex-col items-end" style={{ right: u(14), top: u(14), gap: u(10) }}>
+      <NameTag />
+      <div className="relative flex" style={{ gap: u(10) }}>
+        <QuickChat />
+        <SettingsButton />
+      </div>
+      <KillFeed />
+    </div>
+  )
+}
+
 /** Quick chat: a button under your name tag (and the T key) opening ten one-tap lines. */
 export function QuickChat() {
   const open = useGame((s) => s.quickChat)
@@ -70,16 +88,16 @@ export function QuickChat() {
   return (
     <>
       <Button
-        className="pointer-events-auto absolute flex items-center justify-center"
+        className="pointer-events-auto flex items-center justify-center"
         color="#2b8fd8"
         title="Quick chat (T)"
-        style={{ right: u(76), top: u(88), width: u(52), height: u(52), padding: 0, fontSize: u(24) }}
+        style={{ width: u(52), height: u(52), padding: 0, fontSize: u(24) }}
         onClick={() => setOpen(!open)}
       >
         💬
       </Button>
       {open && (
-        <div className="mc-panel pointer-events-auto pop-in absolute grid" style={{ right: u(14), top: u(150), zIndex: 25, padding: u(8), gap: u(6), gridTemplateColumns: 'repeat(2, auto)' }}>
+        <div className="mc-panel pointer-events-auto pop-in absolute grid" style={{ right: 0, top: `calc(100% + ${u(8)})`, zIndex: 25, padding: u(8), gap: u(6), gridTemplateColumns: 'repeat(2, auto)' }}>
           {QUICK_CHAT.map((text, i) => (
             <button
               key={text}
@@ -108,10 +126,10 @@ export function SettingsButton() {
   const open = useGame((s) => s.openPanel)
   return (
     <Button
-      className="pointer-events-auto absolute flex items-center justify-center"
+      className="pointer-events-auto flex items-center justify-center"
       color="#4b5563"
       title="Settings"
-      style={{ right: u(14), top: u(88), width: u(52), height: u(52), padding: 0 }}
+      style={{ width: u(52), height: u(52), padding: 0 }}
       onClick={() => {
         exitPointerLock()
         open('settings')
@@ -170,7 +188,7 @@ export function KillFeed() {
   if (!feed.length) return null
   const how = { melee: '⚔', arrow: '➶', snowball: '❄', tnt: '✹', lava: '🔥', void: '↓', burn: '🔥', lightning: 'ϟ', left: '⇥', pearl: '✦' }
   return (
-    <div className="absolute flex flex-col items-end" style={{ right: u(14), top: u(152), gap: u(4) }}>
+    <div className="flex flex-col items-end" style={{ gap: u(4) }}>
       {feed.map((f) => (
         <div key={f.id} className="mc-panel txt-o slide-in-right" style={{ padding: `${u(3)} ${u(10)}`, fontSize: u(16) }}>
           {f.chat ? (
