@@ -1,16 +1,18 @@
-# React + Vite
+# Lucky Sky Brawl - client
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + react-three-fiber. Everything you see is generated in code at start-up (block
+textures, item models, capes, sounds), so there are no model or texture downloads.
 
-Currently, two official plugins are available:
+```
+npm run dev        # http://localhost:5173 - finds the game server on :2567, else plays offline with bots
+npm run build      # production build in dist/
+```
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+URL flags: `?offline` (always play against bots in this tab), `?perf` (render numbers on
+`window.__perf`; in development also the r3f-perf overlay), `?debug` (internals on
+`window.__pp`), `?server=http://host:port` (development only: a specific server).
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Controls: WASD move, Space jump, Shift sneak (you never fall off an edge while sneaking),
+Ctrl or double-tap W sprint, left mouse break / hit, right mouse place / use (hold to draw
+a bow), 1-9 or the wheel pick a slot, V switch camera, E open a case in the lobby. Phones
+get a stick, drag-to-look and buttons.

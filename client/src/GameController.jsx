@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useBloxity } from './bloxity/BloxityContext'
 import { playerIdFor } from './bloxity/identity'
 import { startGameTicker } from './game/ticker'
-import { startConnection, stopConnection } from './net/connection'
+import { shareLook, startConnection, stopConnection } from './net/connection'
 
 /** Don't hold the game hostage to a slow SDK script: play as guest after this. */
 const SDK_GRACE_MS = 4000
@@ -18,7 +18,7 @@ const SDK_GRACE_MS = 4000
  * you away from the people you were playing with.
  */
 export function GameController() {
-  const { status, user, guest, identity } = useBloxity()
+  const { status, user, guest, identity, avatar, proportions } = useBloxity()
   const [graceOver, setGraceOver] = useState(false)
   const settled = status === 'ready' || status === 'error' || graceOver
   const playerId = settled ? playerIdFor(user, guest) : null
@@ -40,6 +40,11 @@ export function GameController() {
     const stop = startGameTicker()
     return stop
   }, [])
+
+  // Everyone else sees you in your Bloxity avatar: share it (again when it changes).
+  useEffect(() => {
+    shareLook(avatar, proportions)
+  }, [avatar, proportions])
 
   useEffect(() => {
     if (!playerId) return undefined

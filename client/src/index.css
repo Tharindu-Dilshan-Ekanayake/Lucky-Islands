@@ -1,75 +1,21 @@
 @import 'tailwindcss';
 
-:root {
-  color-scheme: light;
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  /*
-   * HUD unit: one pixel of the 1920x1080 reference layout, scaled to fit the viewport
-   * and floored so touch targets stay usable on phones.
-   */
-  --px: clamp(0.3px, min(100vw / 1920, 100vh / 1080), 1.4px);
+@theme {
+  --font-pixel: 'Fredoka', system-ui, 'Segoe UI', sans-serif;
 }
 
-/*
- * Where the HUD's blocks sit. Landscape (the 1920x1080 reference) by default; a phone
- * held upright gets a stacked layout scaled to its width, and a short landscape phone
- * keeps the passes clear of the jump button. Positions live here, not inline, so the
- * media queries can move them.
- */
-.hud-topcenter {
-  top: calc(var(--px) * 76);
-}
-.hud-stats {
-  left: calc(var(--px) * 22);
-  top: calc(var(--px) * 150);
-}
-.hud-menu {
-  left: calc(var(--px) * 18);
-  top: calc(var(--px) * 380);
-}
-.hud-passes {
-  right: calc(var(--px) * 24);
-  top: 34%;
-}
-/* The stick's resting spot and the jump button (TouchControls.jsx). */
-.touch-joy-rest {
-  top: calc(100% - 129px);
-}
-.touch-jump {
-  right: 14px;
-  bottom: 14px;
+:root {
+  color-scheme: dark;
+  font-family: 'Fredoka', system-ui, 'Segoe UI', sans-serif;
+  font-weight: 600;
+  -webkit-font-smoothing: antialiased;
+  /* HUD unit: one pixel of a 1600x900 layout, scaled to the screen, floored for phones. */
+  --u: clamp(0.62px, min(100vw / 1600, 100vh / 900), 1.35px);
 }
 
 @media (orientation: portrait) {
   :root {
-    /* Upright: sized to the width, as if the screen were 1000 reference px wide. */
-    --px: clamp(0.3px, min(100vw / 1000, 100vh / 1900), 1.4px);
-  }
-  .hud-topcenter {
-    top: calc(var(--px) * 96);
-  }
-  .hud-stats {
-    top: calc(var(--px) * 380);
-  }
-  .hud-menu {
-    top: calc(var(--px) * 600);
-  }
-  .hud-passes {
-    top: calc(var(--px) * 420);
-  }
-  /* Above the Health bar, which runs the whole width along the bottom. */
-  .touch-joy-rest {
-    top: calc(100% - 129px - var(--px) * 300);
-  }
-  .touch-jump {
-    bottom: calc(14px + var(--px) * 300);
-  }
-}
-
-@media (orientation: landscape) and (max-height: 500px) {
-  .hud-passes {
-    top: calc(var(--px) * 110);
+    --u: clamp(0.5px, min(100vw / 900, 100vh / 1600), 1.2px);
   }
 }
 
@@ -81,277 +27,556 @@ body,
   overflow: hidden;
   overscroll-behavior: none;
   -webkit-tap-highlight-color: transparent;
-  background: #a6d6fb;
+  background: #7fd0ff;
 }
 
-/* The R3F canvas fills its container; the HUD is absolutely positioned over it. */
 canvas {
   display: block;
   touch-action: none;
 }
 
-.pp-font {
-  font-family: 'Fredoka One', 'Arial Rounded MT Bold', system-ui, sans-serif;
-  letter-spacing: 0.01em;
+.pixelated {
+  image-rendering: pixelated;
 }
 
-/* Outlined text, see StrokeText.jsx. */
-.pp-text {
-  position: relative;
-  display: inline-block;
-  font-family: 'Fredoka One', 'Arial Rounded MT Bold', system-ui, sans-serif;
-  white-space: nowrap;
-}
-.pp-text-stroke {
-  position: absolute;
-  inset: 0;
-  color: #000;
-  -webkit-text-stroke-color: #000;
-  -webkit-text-stroke-width: 6px;
-  text-shadow: 0 0.06em 0 #000;
-  pointer-events: none;
-  user-select: none;
-}
-.pp-text-fill {
-  position: relative;
-}
-
-/* Single-element outline for small labels where a gradient isn't needed. */
-.pp-stroke {
-  font-family: 'Fredoka One', 'Arial Rounded MT Bold', system-ui, sans-serif;
+/* Outlined pixel text that reads on any background. */
+.txt-o {
+  --o: max(1px, calc(var(--u) * 2));
   color: #fff;
-  -webkit-text-stroke: 0.18em #000;
-  paint-order: stroke fill;
+  text-shadow:
+    var(--o) 0 0 #1a1230,
+    calc(var(--o) * -1) 0 0 #1a1230,
+    0 var(--o) 0 #1a1230,
+    0 calc(var(--o) * -1) 0 #1a1230,
+    var(--o) var(--o) 0 #1a1230,
+    calc(var(--o) * -1) var(--o) 0 #1a1230,
+    var(--o) calc(var(--o) * -1) 0 #1a1230,
+    calc(var(--o) * -1) calc(var(--o) * -1) 0 #1a1230,
+    0 calc(var(--u) * 4) calc(var(--u) * 2) rgba(0, 0, 0, 0.35);
+  letter-spacing: 0.02em;
 }
 
-@keyframes pp-fly {
-  0% {
-    transform: translate(-30px, 8px) rotate(-4deg);
-  }
-  50% {
-    transform: translate(30px, -10px) rotate(4deg);
-  }
-  100% {
-    transform: translate(-30px, 8px) rotate(-4deg);
-  }
-}
-.pp-loading-disc {
-  animation: pp-fly 2.4s ease-in-out infinite;
-  filter: drop-shadow(0 8px 0 rgba(0, 0, 0, 0.25));
+/* Panels: rounded glass cards. */
+.mc-panel {
+  background: linear-gradient(180deg, rgba(46, 38, 84, 0.93), rgba(22, 18, 44, 0.93));
+  border: calc(var(--u) * 3) solid rgba(255, 255, 255, 0.14);
+  border-radius: calc(var(--u) * 18);
+  box-shadow:
+    0 calc(var(--u) * 10) calc(var(--u) * 28) rgba(10, 6, 30, 0.45),
+    inset 0 calc(var(--u) * 2) 0 rgba(255, 255, 255, 0.08);
 }
 
-/* Chunky press feel for every HUD button. */
-.pp-btn {
+/* Buttons: rounded, glossy, with a 3D lip they press down into. --c is the colour. */
+.mc-btn {
+  --c: #4a8f2c;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0.1) 46%, rgba(0, 0, 0, 0.06) 54%, rgba(0, 0, 0, 0.16) 100%),
+    var(--c);
+  border: calc(var(--u) * 3) solid rgba(16, 10, 34, 0.7);
+  border-radius: calc(var(--u) * 14);
+  box-shadow:
+    0 calc(var(--u) * 5) 0 rgba(16, 10, 34, 0.55),
+    0 calc(var(--u) * 8) calc(var(--u) * 14) rgba(0, 0, 0, 0.25),
+    inset 0 calc(var(--u) * 2) 0 rgba(255, 255, 255, 0.45);
+  color: #fff;
+  font-weight: 700;
   cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
   transition:
     transform 0.08s ease-out,
+    box-shadow 0.08s ease-out,
     filter 0.12s;
-  -webkit-user-select: none;
-  user-select: none;
 }
-.pp-btn:hover:not(:disabled) {
-  filter: brightness(1.08);
+.mc-btn:hover:not(:disabled) {
+  filter: brightness(1.12) saturate(1.05);
+  transform: translateY(calc(var(--u) * -1));
 }
-.pp-btn:active:not(:disabled) {
-  transform: scale(0.93);
+.mc-btn:active:not(:disabled) {
+  transform: translateY(calc(var(--u) * 4));
+  box-shadow:
+    0 calc(var(--u) * 1) 0 rgba(16, 10, 34, 0.55),
+    inset 0 calc(var(--u) * 2) 0 rgba(255, 255, 255, 0.35);
 }
-.pp-btn:disabled {
+.mc-btn:disabled {
+  filter: saturate(0.2) brightness(0.7);
   cursor: default;
 }
+.mc-btn.picked {
+  outline: calc(var(--u) * 3) solid #fff;
+  outline-offset: calc(var(--u) * 2);
+  box-shadow:
+    0 0 calc(var(--u) * 18) rgba(255, 255, 255, 0.45),
+    0 calc(var(--u) * 5) 0 rgba(16, 10, 34, 0.55),
+    inset 0 calc(var(--u) * 2) 0 rgba(255, 255, 255, 0.45);
+}
 
-/*
- * The game's chunky button: a thick dark lip under the face that it presses down
- * into, and a glossy highlight across the top. --lip is the lip's height.
- */
-.pp-chunky {
-  --lip: calc(var(--px) * 6);
+/* Small rounded pills for counts and tags. */
+.chip {
+  display: inline-block;
+  padding: calc(var(--u) * 2) calc(var(--u) * 10);
+  border-radius: 999px;
+  background: rgba(10, 6, 30, 0.55);
+  border: calc(var(--u) * 2) solid rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-weight: 700;
+}
+.vote-count {
+  display: inline-block;
+  margin-top: calc(var(--u) * 2);
+  padding: calc(var(--u) * 1) calc(var(--u) * 10);
+  border-radius: 999px;
+  background: rgba(10, 6, 30, 0.4);
+  font-size: calc(var(--u) * 14);
+  font-weight: 700;
+  word-spacing: 0.2em;
+}
+
+.slot {
+  background: rgba(22, 18, 40, 0.72);
+  border: calc(var(--u) * 3) solid rgba(255, 255, 255, 0.14);
+  border-radius: calc(var(--u) * 10);
+  box-shadow: inset 0 calc(var(--u) * 3) calc(var(--u) * 6) rgba(0, 0, 0, 0.35);
+}
+.slot.sel {
+  border-color: #fff;
+  background: rgba(80, 70, 120, 0.85);
   box-shadow:
-    0 var(--lip) 0 #111,
-    0 calc(var(--lip) + var(--px) * 4) calc(var(--px) * 6) rgba(0, 0, 0, 0.3),
-    inset 0 calc(var(--px) * -5) 0 rgba(0, 0, 0, 0.2);
-  transition:
-    transform 0.07s ease-out,
-    box-shadow 0.07s ease-out,
-    filter 0.12s;
+    0 0 calc(var(--u) * 12) rgba(255, 255, 255, 0.5),
+    inset 0 calc(var(--u) * 2) 0 rgba(255, 255, 255, 0.15);
 }
-.pp-chunky:hover:not(:disabled) {
-  transform: translateY(calc(var(--px) * -2));
-  filter: brightness(1.07) saturate(1.05);
-}
-.pp-chunky:active:not(:disabled) {
-  transform: translateY(calc(var(--lip) - var(--px) * 1));
-  box-shadow:
-    0 calc(var(--px) * 1) 0 #111,
-    inset 0 calc(var(--px) * -3) 0 rgba(0, 0, 0, 0.2);
-}
-.pp-chunky:disabled {
-  filter: saturate(0.35) brightness(0.92);
-}
-.pp-chunky > * {
-  z-index: 1;
-}
-.pp-chunky > :not(.absolute) {
-  position: relative;
-}
-.pp-chunky > .pp-gloss {
+
+
+/* Names over players (placed every frame by Characters.jsx). */
+#nameplates {
   position: absolute;
-  z-index: 0;
-  left: 6%;
-  right: 6%;
-  top: 7%;
-  height: 42%;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72) 0%, rgba(255, 255, 255, 0.1) 100%);
+  inset: 0;
   pointer-events: none;
+  overflow: hidden;
+}
+.nameplate {
+  position: absolute;
+  left: 0;
+  top: 0;
+  text-align: center;
+  will-change: transform;
+}
+.np-name {
+  display: inline-block;
+  font-size: calc(var(--u) * 18);
+  padding: 0 calc(var(--u) * 8);
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  white-space: nowrap;
+}
+/* VIP names: gold. */
+.np-name.np-vip {
+  color: #ffd23b;
+  text-shadow: 0 0 calc(var(--u) * 6) rgba(255, 210, 59, 0.6);
 }
 
-@keyframes pp-panel-in {
-  from {
-    transform: scale(0.85);
+/* The level badge beside a name. */
+.np-lvl {
+  display: none;
+  min-width: calc(var(--u) * 22);
+  margin-right: calc(var(--u) * 3);
+  padding: 0 calc(var(--u) * 4);
+  border-radius: calc(var(--u) * 6);
+  background: linear-gradient(#ffe36b, #e0a21b);
+  color: #2a1a00;
+  font-size: calc(var(--u) * 14);
+  font-weight: 700;
+  vertical-align: top;
+  line-height: calc(var(--u) * 22);
+}
+.np-bubble {
+  display: none;
+  max-width: calc(var(--u) * 260);
+  margin: 0 auto calc(var(--u) * 6);
+  padding: calc(var(--u) * 6) calc(var(--u) * 10);
+  background: #fff;
+  color: #1b1430;
+  font-size: calc(var(--u) * 16);
+  border: calc(var(--u) * 3) solid #0d0a18;
+  white-space: normal;
+}
+
+#hurt-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(200, 0, 0, 0.55) 100%);
+}
+
+@keyframes pop-in {
+  0% {
+    transform: scale(0.4);
     opacity: 0;
   }
   60% {
-    transform: scale(1.03);
+    transform: scale(1.12);
     opacity: 1;
   }
-  to {
-    transform: none;
+  100% {
+    transform: scale(1);
   }
 }
-.pp-panel-in {
-  animation: pp-panel-in 0.22s ease-out;
+.pop-in {
+  animation: pop-in 0.35s ease-out both;
 }
-
-@keyframes pp-bounce {
+@keyframes fade-up {
+  0% {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  15% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-14px);
+    opacity: 0;
+  }
+}
+.fade-up {
+  animation: fade-up 2.6s ease-out both;
+}
+@keyframes pulse-red {
+  0%,
+  100% {
+    color: #ff5a3c;
+  }
+  50% {
+    color: #ffd23b;
+  }
+}
+.pulse-red {
+  animation: pulse-red 0.8s steps(2) infinite;
+}
+@keyframes bob {
   0%,
   100% {
     transform: translateY(0);
   }
   50% {
-    transform: translateY(-12%);
+    transform: translateY(-8px);
   }
 }
-.pp-bounce {
-  animation: pp-bounce 0.8s ease-in-out infinite;
-  filter: drop-shadow(0 4px 0 rgba(0, 0, 0, 0.3));
+.bob {
+  animation: bob 1.4s ease-in-out infinite;
 }
 
-@keyframes pp-result {
+/*
+ * The lobby menu: square tiles (icon over label), two to a row, on the left - narrow
+ * enough to stay clear of the vote panel in the middle on any screen.
+ */
+.lobby-menu {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: calc(var(--u) * 10);
+  top: 50%;
+  transform: translateY(-50%);
+}
+.menu-btn {
+  width: calc(var(--u) * 84);
+  height: calc(var(--u) * 84);
+  padding: calc(var(--u) * 6) calc(var(--u) * 4);
+  gap: calc(var(--u) * 5);
+}
+.menu-btn svg {
+  width: calc(var(--u) * 34) !important;
+  height: calc(var(--u) * 34) !important;
+}
+.menu-label {
+  font-size: calc(var(--u) * 13);
+  line-height: 1;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+@media (max-height: 520px) {
+  .lobby-menu {
+    top: calc(var(--u) * 70);
+    transform: none;
+  }
+}
+
+/* A soft darkening at the corners: draws the eye in, costs the GPU nothing. */
+.screen-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 62%, rgba(10, 6, 30, 0.28) 100%);
+}
+
+/* Your name tag, top right. */
+.name-tag {
+  display: flex;
+  align-items: center;
+}
+
+/* The lobby vote shrinks on short (landscape phone) screens. */
+@media (max-height: 520px) {
+  .vote-panel {
+    transform: scale(0.7);
+    transform-origin: top center;
+  }
+}
+
+/*
+ * Title text: a gradient fill over a thick dark outline, with a drop shadow. The text
+ * is drawn three times from data-text (layout, outline, fill), so it stays one string.
+ */
+.fancy {
+  --fs: calc(var(--u) * 30);
+  position: relative;
+  display: inline-block;
+  font-size: var(--fs);
+  font-family: 'Fredoka', system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  line-height: 1.15;
+  white-space: nowrap;
+  color: transparent;
+}
+.fancy::before,
+.fancy::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.fancy::before {
+  color: var(--st, #1a0f2e);
+  -webkit-text-stroke: calc(var(--fs) * 0.17) var(--st, #1a0f2e);
+  text-shadow: 0 calc(var(--fs) * 0.16) 0 rgba(0, 0, 0, 0.4);
+}
+.fancy::after {
+  background: linear-gradient(180deg, var(--f1, #ffffff) 0%, var(--f1, #ffffff) 35%, var(--f2, #ffd23b) 75%, var(--f2, #ffd23b) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Hotbar slots: bigger for fingers. */
+:root {
+  --slot: calc(var(--u) * 58);
+}
+@media (pointer: coarse) {
+  :root {
+    --slot: max(42px, calc(var(--u) * 74));
+  }
+}
+
+/* Hit marker: an X that flashes over the crosshair when your hit lands. */
+@keyframes hit-flash {
   0% {
-    transform: translate(-50%, -50%) scale(0.3);
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.25);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+}
+#hitmarker {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  opacity: 0;
+  pointer-events: none;
+}
+#hitmarker.on {
+  animation: hit-flash 0.28s ease-out both;
+}
+@keyframes dmg-rise {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 0) scale(0.6);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(-50%, -10px) scale(1.15);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -60px) scale(1);
+  }
+}
+.dmg-num {
+  position: absolute;
+  pointer-events: none;
+  animation: dmg-rise 0.8s ease-out both;
+}
+@keyframes banner-in {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scale(1.6);
+  }
+  12% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+}
+.kill-banner {
+  animation: banner-in 2.4s ease-out both;
+}
+
+/* Touch buttons: round, glassy, pressed in when held. */
+.tbtn {
+  border-radius: 50%;
+  border: calc(var(--u) * 4) solid rgba(13, 10, 24, 0.85);
+  box-shadow:
+    inset 0 calc(var(--u) * 6) 0 rgba(255, 255, 255, 0.28),
+    inset 0 calc(var(--u) * -7) 0 rgba(0, 0, 0, 0.28),
+    0 calc(var(--u) * 5) 0 rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: transform 0.06s;
+}
+.tbtn:active,
+.tbtn.held {
+  transform: scale(0.92) translateY(2px);
+  filter: brightness(1.15);
+}
+
+/* --- Motion ---------------------------------------------------------------------------------
+ * Everything below animates only transform and opacity (compositor-only, no layout), and
+ * uses `backwards` fill on buttons so their own hover/press transforms still work after.
+ */
+
+/* Zone changes fade in from dark. */
+@keyframes zone-fade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+.zone-fade {
+  position: absolute;
+  inset: 0;
+  background: #0d0a18;
+  pointer-events: none;
+  opacity: 0;
+  animation: zone-fade 0.6s ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+.fade-in {
+  animation: fade-in 0.35s ease-out backwards;
+}
+
+/* The top title drops in when the phase changes. */
+@keyframes drop-in {
+  0% {
+    transform: translateY(calc(var(--u) * -30)) scale(0.9);
+    opacity: 0;
+  }
+  70% {
+    transform: translateY(calc(var(--u) * 3)) scale(1.03);
+    opacity: 1;
+  }
+  100% {
+    transform: none;
+  }
+}
+.drop-in {
+  animation: drop-in 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2) backwards;
+}
+
+/* 3, 2, 1, GO! */
+@keyframes big-count {
+  0% {
+    transform: translate(-50%, -50%) scale(2.4);
     opacity: 0;
   }
   18% {
-    transform: translate(-50%, -50%) scale(1.15);
+    transform: translate(-50%, -50%) scale(0.92);
     opacity: 1;
   }
   30% {
+    transform: translate(-50%, -50%) scale(1.06);
+  }
+  42%,
+  75% {
     transform: translate(-50%, -50%) scale(1);
-  }
-  85% {
     opacity: 1;
   }
   100% {
-    transform: translate(-50%, -60%) scale(1);
+    transform: translate(-50%, -50%) scale(0.7);
     opacity: 0;
   }
 }
-.pp-result {
-  animation: pp-result 1.5s ease-out forwards;
+.big-count {
+  transform: translate(-50%, -50%);
+  animation: big-count 1s ease-out both;
 }
-
-/* A hint across the top: pops in, stays about three seconds, fades (see TopCenter.jsx). */
-@keyframes pp-hint {
+@keyframes big-go {
   0% {
-    transform: translateY(calc(var(--px) * -14)) scale(0.85);
+    transform: translate(-50%, -50%) scale(0.3) rotate(-8deg);
     opacity: 0;
   }
-  8% {
-    transform: translateY(0) scale(1.06);
+  25% {
+    transform: translate(-50%, -50%) scale(1.15) rotate(3deg);
     opacity: 1;
   }
-  14% {
-    transform: scale(1);
-  }
-  85% {
-    transform: scale(1);
+  45%,
+  70% {
+    transform: translate(-50%, -50%) scale(1) rotate(0);
     opacity: 1;
   }
   100% {
-    transform: translateY(calc(var(--px) * -10)) scale(0.96);
+    transform: translate(-50%, -50%) scale(1.8);
     opacity: 0;
   }
 }
-.pp-hint {
-  animation: pp-hint 3.4s ease-out forwards;
+.big-count.big-go {
+  animation: big-go 1s ease-out both;
 }
 
-/* Hatch reveal, see HatchOverlay.jsx. */
-@keyframes pp-egg-shake {
-  0% { transform: rotate(0) scale(1); }
-  15% { transform: rotate(-6deg); }
-  30% { transform: rotate(6deg); }
-  45% { transform: rotate(-10deg); }
-  60% { transform: rotate(10deg); }
-  72% { transform: rotate(-14deg) scale(1.04); }
-  84% { transform: rotate(14deg) scale(1.08); }
-  95% { transform: rotate(0) scale(1.15); opacity: 1; }
-  100% { transform: scale(1.3); opacity: 0; }
-}
-.pp-egg {
-  animation: pp-egg-shake 1.2s ease-in both;
-}
-@keyframes pp-flash {
-  from { transform: scale(0.2); opacity: 1; }
-  to { transform: scale(1.5); opacity: 0; }
-}
-.pp-flash {
-  opacity: 0;
-  animation: pp-flash 0.45s ease-out both;
-}
-@keyframes pp-pop {
-  0% { transform: scale(0); opacity: 0; }
-  60% { transform: scale(1.18); opacity: 1; }
-  100% { transform: scale(1); opacity: 1; }
-}
-.pp-pet {
-  animation: pp-pop 0.45s ease-out both;
-}
-@keyframes pp-rays {
-  0% { transform: rotate(0deg) scale(0.4); opacity: 0; }
-  10% { opacity: 1; transform: rotate(18deg) scale(1.1); }
-  100% { transform: rotate(180deg) scale(1.1); opacity: 0.9; }
-}
-.pp-rays {
-  animation: pp-rays 3s linear both;
-  mask-image: radial-gradient(circle, #000 25%, transparent 70%);
-  -webkit-mask-image: radial-gradient(circle, #000 25%, transparent 70%);
-}
-
-/* The SLIDE! button breathes, so it reads as the thing to press. */
-/* Trophies streaming into the Wins counter at the end of a roll (RollOverlay.jsx). */
-@keyframes pp-fly {
+/* Vote cards come in one after another. */
+@keyframes card-in {
   0% {
-    transform: translate(-50%, -50%) scale(0.3);
+    transform: translateY(calc(var(--u) * 24)) scale(0.85);
     opacity: 0;
   }
-  18% {
-    transform: translate(calc(-50% + var(--sx)), calc(-50% + var(--sy))) scale(1.15);
-    opacity: 1;
-  }
-  85% {
+  70% {
+    transform: translateY(calc(var(--u) * -3)) scale(1.02);
     opacity: 1;
   }
   100% {
-    transform: translate(calc(var(--px) * 65 - 50vw), calc(var(--px) * 279 - 48vh)) scale(0.45);
-    opacity: 0;
+    transform: none;
   }
 }
-.pp-fly {
-  animation: pp-fly 1s cubic-bezier(0.55, 0, 0.75, 0.2) both;
+.vote-card {
+  animation: card-in 0.42s cubic-bezier(0.2, 0.9, 0.3, 1.2) backwards;
+  animation-delay: calc(var(--i, 0) * 70ms);
 }
 
-/* A number that just changed (StatsPanel.jsx). */
-@keyframes pp-bump {
+/* A number that just changed. */
+@keyframes bump {
   0% {
     transform: scale(1);
   }
@@ -362,222 +587,408 @@ canvas {
     transform: scale(1);
   }
 }
-.pp-bump {
+.bump {
   display: inline-block;
-  transform-origin: left center;
-  animation: pp-bump 0.35s ease-out;
+  animation: bump 0.3s ease-out;
 }
 
-/* The speed tunnel (HUD.jsx): streaks round the edges rushing outwards, centre clear. */
-.pp-tunnel {
-  inset: -15%;
-  background: repeating-conic-gradient(
-    from 0deg at 50% 50%,
-    transparent 0deg 2.6deg,
-    rgba(255, 255, 255, 0.55) 2.9deg 3.3deg,
-    transparent 3.6deg 5.1deg,
-    rgba(255, 255, 255, 0.3) 5.3deg 5.6deg,
-    transparent 5.9deg 8deg
-  );
-  -webkit-mask-image: radial-gradient(ellipse 60% 55% at 50% 50%, transparent 45%, #000 100%);
-  mask-image: radial-gradient(ellipse 60% 55% at 50% 50%, transparent 45%, #000 100%);
-  animation: pp-tunnel 0.22s linear infinite;
-}
-@keyframes pp-tunnel {
-  from {
-    transform: scale(1) rotate(0deg);
+/* The selected hotbar slot springs. */
+@keyframes slot-pick {
+  0% {
+    transform: scale(1);
   }
-  to {
-    transform: scale(1.12) rotate(1.4deg);
+  40% {
+    transform: scale(1.16) translateY(calc(var(--u) * -3));
+  }
+  100% {
+    transform: scale(1.06) translateY(calc(var(--u) * -2));
   }
 }
-/* The blur down the sides: a soft white haze thickening towards the edges. */
-.pp-tunnel-haze {
-  background: radial-gradient(ellipse 75% 70% at 50% 50%, transparent 55%, rgba(255, 255, 255, 0.28) 85%, rgba(255, 255, 255, 0.5) 100%);
+.slot.sel {
+  transform: scale(1.06) translateY(calc(var(--u) * -2));
+  animation: slot-pick 0.22s ease-out;
 }
 
-/*
- * The KICK! button breathes a green glow, so it reads as the thing to press. The glow is
- * its own layer whose opacity alone is animated - the compositor runs that without the
- * main thread - where animating the button's own filter repainted the whole outlined
- * button every frame for as long as you stood on the kick zone.
- */
-@keyframes pp-pulse {
+/* Hearts: shake when hit, swell when healed, tremble when low. */
+@keyframes hearts-hurt {
   0%,
   100% {
-    opacity: 0;
+    transform: translateX(0);
   }
-  50% {
-    opacity: 1;
+  20% {
+    transform: translateX(calc(var(--u) * -6));
+  }
+  40% {
+    transform: translateX(calc(var(--u) * 5));
+  }
+  60% {
+    transform: translateX(calc(var(--u) * -3));
+  }
+  80% {
+    transform: translateX(calc(var(--u) * 2));
   }
 }
-.pp-roll-btn::after {
-  content: '';
-  position: absolute;
-  inset: calc(var(--px) * -4);
-  z-index: -1;
-  border-radius: inherit;
-  box-shadow: 0 0 calc(var(--px) * 22) calc(var(--px) * 6) rgba(120, 255, 90, 0.85);
-  pointer-events: none;
-  opacity: 0;
-  will-change: opacity;
-  animation: pp-pulse 1.1s ease-in-out infinite;
+.hearts-hurt {
+  animation: hearts-hurt 0.35s ease-out;
+}
+@keyframes heart-heal {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.25);
+  }
+}
+.hearts-heal img {
+  animation: heart-heal 0.4s ease-out;
+}
+@keyframes heart-low {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  25% {
+    transform: translateY(calc(var(--u) * -2));
+  }
+  75% {
+    transform: translateY(calc(var(--u) * 1));
+  }
+}
+img.heart-low {
+  animation: heart-low 0.45s steps(4) infinite;
 }
 
-/*
- * A graded hit's moment (HitFlash.jsx, one card per grade): hidden until the frame loop puts
- * .pp-perfect-on on it, which (re)starts every animation below. ~1.9 s in all.
- */
-.pp-perfect {
-  visibility: hidden;
-}
-.pp-perfect.pp-perfect-on {
-  visibility: visible;
-}
-.pp-perfect-on .pp-perfect-flash {
-  background: radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.95) 0%, rgba(255, 236, 160, 0.6) 35%, rgba(255, 160, 40, 0) 75%);
-  animation: pp-perfect-flash 0.45s ease-out forwards;
-}
-@keyframes pp-perfect-flash {
-  0% {
+/* Lobby menu buttons slide in from the left, one after another. */
+@keyframes slide-in-left {
+  from {
+    transform: translateX(calc(var(--u) * -60));
     opacity: 0;
   }
-  15% {
+}
+.lobby-menu > * {
+  animation: slide-in-left 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.15) backwards;
+}
+.lobby-menu > :nth-child(2) {
+  animation-delay: 40ms;
+}
+.lobby-menu > :nth-child(3) {
+  animation-delay: 80ms;
+}
+.lobby-menu > :nth-child(4) {
+  animation-delay: 120ms;
+}
+.lobby-menu > :nth-child(5) {
+  animation-delay: 160ms;
+}
+.lobby-menu > :nth-child(6) {
+  animation-delay: 200ms;
+}
+.lobby-menu > :nth-child(7) {
+  animation-delay: 240ms;
+}
+@keyframes slide-in-right {
+  from {
+    transform: translateX(calc(var(--u) * 50));
+    opacity: 0;
+  }
+}
+.slide-in-right {
+  animation: slide-in-right 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.15) backwards;
+}
+@keyframes slide-in-up {
+  from {
+    transform: translateY(calc(var(--u) * 40));
+    opacity: 0;
+  }
+}
+.slide-in-up {
+  animation: slide-in-up 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.15) backwards;
+}
+
+/* Round results. */
+@keyframes victory-title {
+  0% {
+    transform: scale(0.2) rotate(-12deg);
+    opacity: 0;
+  }
+  55% {
+    transform: scale(1.18) rotate(4deg);
+    opacity: 1;
+  }
+  75% {
+    transform: scale(0.96) rotate(-2deg);
+  }
+  100% {
+    transform: none;
+  }
+}
+@keyframes victory-glow {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+.victory-title {
+  animation:
+    victory-title 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.2) backwards,
+    victory-glow 1.6s ease-in-out 0.7s infinite;
+}
+@keyframes shake-in {
+  0% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  55% {
+    transform: translateX(calc(var(--u) * -8));
+  }
+  70% {
+    transform: translateX(calc(var(--u) * 6));
+  }
+  85% {
+    transform: translateX(calc(var(--u) * -3));
+  }
+  100% {
+    transform: none;
+  }
+}
+.shake-in {
+  animation: shake-in 0.6s ease-out backwards;
+}
+@keyframes confetti {
+  0% {
+    transform: translate(0, -10vh) rotate(0);
+    opacity: 1;
+  }
+  85% {
     opacity: 1;
   }
   100% {
+    transform: translate(var(--dx), 105vh) rotate(var(--rot));
     opacity: 0;
   }
 }
-/*
- * Painted small (60vmax) and scaled up on the GPU (RAYS_SCALE = 2.8 in the keyframes):
- * soft rays look the same, and the gradient and mask are rasterized at an eighth of the
- * pixels - a full-size first paint at the moment of the hit was a visible hitch.
- */
-.pp-perfect-rays {
-  left: 50%;
-  top: 42%;
-  width: 60vmax;
-  height: 60vmax;
-  margin: -30vmax 0 0 -30vmax;
-  opacity: 0;
-  will-change: transform, opacity;
-  background: repeating-conic-gradient(from 0deg, var(--ray, rgba(255, 214, 60, 0.5)) 0deg 7deg, transparent 7deg 20deg);
-  -webkit-mask-image: radial-gradient(circle, #000 0%, #000 12%, transparent 45%);
-  mask-image: radial-gradient(circle, #000 0%, #000 12%, transparent 45%);
+.confetti {
+  position: absolute;
+  top: 0;
+  border-radius: 2px;
+  animation: confetti 2.6s cubic-bezier(0.3, 0.6, 0.6, 1) both;
 }
-.pp-perfect-on .pp-perfect-rays {
-  animation: pp-perfect-rays 1.9s ease-out forwards;
+
+/* Players who prefer less motion get the information without the movement. */
+@media (prefers-reduced-motion: reduce) {
+  .zone-fade,
+  .drop-in,
+  .vote-card,
+  .bump,
+  .slot.sel,
+  .hearts-hurt,
+  .hearts-heal img,
+  img.heart-low,
+  .lobby-menu > *,
+  .slide-in-right,
+  .slide-in-up,
+  .victory-title,
+  .shake-in,
+  .confetti,
+  .pop-in,
+  .fade-up,
+  .bob {
+    animation: none !important;
+  }
+  .zone-fade,
+  .confetti {
+    display: none;
+  }
 }
-@keyframes pp-perfect-rays {
+
+/* Level up! */
+@keyframes level-up {
   0% {
+    transform: translate(-50%, 0) scale(0.3);
     opacity: 0;
-    transform: rotate(0deg) scale(1.1);
   }
   12% {
+    transform: translate(-50%, 0) scale(1.15);
     opacity: 1;
-    transform: rotate(12deg) scale(2.8);
   }
-  70% {
-    opacity: 0.85;
+  20%,
+  85% {
+    transform: translate(-50%, 0) scale(1);
+    opacity: 1;
   }
   100% {
+    transform: translate(-50%, calc(var(--u) * -30)) scale(0.95);
     opacity: 0;
-    transform: rotate(70deg) scale(3.2);
   }
 }
-.pp-perfect-stack {
-  top: 30%;
+.level-up {
+  animation: level-up 4.2s ease-out both;
+}
+@keyframes xp-fill {
+  from {
+    transform: scaleX(0);
+  }
+}
+.xp-fill {
+  transform-origin: left center;
+  animation: xp-fill 0.9s cubic-bezier(0.2, 0.9, 0.3, 1) backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .level-up,
+  .xp-fill {
+    animation: none !important;
+  }
+}
+
+/* --- Vote rows: one line on wide screens, a grid when there are many or the screen is narrow. */
+.vote-row {
+  display: flex;
+}
+.vote-maps {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+}
+
+/* --- Phones held upright ---------------------------------------------------------------------
+ * The same HUD, re-flowed for a tall, narrow screen: the corner buttons sit beside your name
+ * tag instead of under it, the title goes under that row, vote cards wrap three to a line,
+ * and the touch buttons and stick move up above the hotbar (which keeps the bottom edge).
+ */
+@media (orientation: portrait) {
+  .top-right {
+    flex-direction: row-reverse;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: flex-start;
+    max-width: calc(100vw - var(--u) * 28);
+  }
+  .top-right > .tr-feed {
+    /* The kill feed: its own line under the name tag. */
+    flex-basis: 100%;
+    align-items: flex-end;
+  }
+  .objective {
+    top: calc(var(--u) * 215) !important;
+    max-width: calc(100vw - var(--u) * 16);
+  }
+  .toasts {
+    top: calc(var(--u) * 300) !important;
+    max-width: calc(100vw - var(--u) * 16);
+    text-align: center;
+  }
+  .top-center {
+    top: calc(var(--u) * 110) !important;
+    max-width: calc(100vw - var(--u) * 16);
+  }
+  .vote-panel {
+    max-width: calc(100vw - var(--u) * 20);
+  }
+  .vote-modes {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .vote-modes > .vote-card {
+    width: auto !important;
+  }
+  .vote-maps > .vote-card {
+    width: calc(var(--u) * 240) !important;
+  }
+  .touch-cluster {
+    bottom: calc(var(--slot) + var(--u) * 80) !important;
+  }
+  .stick-ghost {
+    bottom: calc(var(--slot) + var(--u) * 90) !important;
+  }
+  .lobby-menu {
+    top: 44%;
+    transform: none;
+  }
+}
+
+/* --- Popups leave room for the portal's screen ads ----------------------------------------
+ * While a popup is open in the lobby, Boxity may show ads at the sides and along the bottom
+ * of the game. Popups stay inside the space between them, so an ad never covers one.
+ */
+:root {
+  --ad-side: 0px;
+  --ad-bottom: 0px;
+}
+@media (orientation: landscape) and (min-width: 900px) {
+  :root {
+    --ad-side: min(320px, 18vw);
+    --ad-bottom: 100px;
+  }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  :root {
+    --ad-side: min(220px, 22vw);
+    --ad-bottom: 76px;
+  }
+}
+@media (orientation: portrait) {
+  :root {
+    --ad-side: 0px;
+    --ad-bottom: 130px;
+  }
+}
+.panel-wrap {
+  box-sizing: border-box;
+  padding: 12px max(12px, var(--ad-side)) max(12px, var(--ad-bottom));
+}
+
+/* --- Touch layout (phones, tablets): smaller lobby buttons, nothing on top of anything --------
+ * Set by TouchControls (body.touch-ui). The lobby menu shrinks so it stays clear of the vote
+ * in the middle; the wallet moves to the bottom centre, away from the move stick.
+ */
+.touch-ui .menu-btn {
+  width: calc(var(--u) * 56);
+  height: calc(var(--u) * 56);
+  padding: calc(var(--u) * 4) calc(var(--u) * 2);
+  gap: calc(var(--u) * 3);
+  border-radius: calc(var(--u) * 12);
+}
+.touch-ui .menu-btn svg {
+  width: calc(var(--u) * 24) !important;
+  height: calc(var(--u) * 24) !important;
+}
+.touch-ui .menu-label {
+  font-size: calc(var(--u) * 9);
+}
+.touch-ui .lobby-menu {
+  gap: calc(var(--u) * 6);
+}
+.touch-ui .wallet {
+  left: 50% !important;
+  bottom: calc(var(--u) * 8) !important;
   transform: translateX(-50%);
+  flex-direction: row;
+  align-items: baseline;
+  gap: calc(var(--u) * 18) !important;
 }
-/* Rasterized once and then only moved and faded by the GPU while they animate. */
-.pp-perfect-title,
-.pp-perfect-badge,
-.pp-perfect-star {
-  opacity: 0;
-  will-change: transform, opacity;
+.touch-ui .wallet > * {
+  font-size: calc(var(--u) * 22) !important;
 }
-.pp-perfect-on .pp-perfect-title {
-  animation: pp-perfect-title 1.9s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
-}
-@keyframes pp-perfect-title {
-  0% {
-    opacity: 0;
-    transform: scale(3.4) rotate(-14deg);
+/* Short landscape phones: the vote shrinks a little more to clear the menu and name tag. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .touch-ui .vote-panel {
+    transform: scale(0.62);
   }
-  10% {
-    opacity: 1;
-    transform: scale(0.88) rotate(-5deg);
-  }
-  16% {
-    transform: scale(1.1) rotate(-7deg);
-  }
-  22% {
-    transform: scale(0.97) rotate(-5deg);
-  }
-  28%,
-  34% {
-    transform: scale(1) rotate(-6deg);
-  }
-  31% {
-    transform: scale(1.04) rotate(-4deg);
-  }
-  72% {
-    opacity: 1;
-    transform: scale(1) rotate(-6deg) translateY(0);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(0.6) rotate(-6deg) translateY(-90%);
+  .touch-ui .lobby-menu {
+    top: calc(var(--u) * 64);
   }
 }
-.pp-perfect-on .pp-perfect-badge {
-  animation: pp-perfect-badge 1.65s ease-out forwards;
-}
-.pp-perfect-on .pp-perfect-badge-1 {
-  animation-delay: 0.22s;
-}
-.pp-perfect-on .pp-perfect-badge-2 {
-  animation-delay: 0.34s;
-}
-@keyframes pp-perfect-badge {
-  0% {
-    opacity: 0;
-    transform: translateY(40%) scale(0.4) rotate(-4deg);
-  }
-  14% {
-    opacity: 1;
-    transform: translateY(0) scale(1.15) rotate(-4deg);
-  }
-  22% {
-    transform: scale(1) rotate(-4deg);
-  }
-  70% {
-    opacity: 1;
-    transform: scale(1) rotate(-4deg);
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(-160%) scale(0.7) rotate(-4deg);
-  }
-}
-.pp-perfect-star {
-  left: 50%;
-  top: 40%;
-}
-.pp-perfect-on .pp-perfect-star {
-  animation: pp-perfect-star 1.1s ease-out forwards;
-}
-@keyframes pp-perfect-star {
-  0% {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.2) rotate(0deg);
-  }
-  15% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.1) rotate(220deg);
+@media (orientation: portrait) {
+  .touch-ui .lobby-menu {
+    /* Above the move stick's ring (128 px tall, raised by --slot + 90u). */
+    top: auto;
+    bottom: calc(var(--slot) + var(--u) * 100 + 140px);
   }
 }

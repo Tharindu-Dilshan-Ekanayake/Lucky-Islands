@@ -6,12 +6,13 @@ import { WebSocketTransport } from '@colyseus/ws-transport'
 import { resolveIdentity } from './bloxityApi.js'
 import { bloxity } from './bloxityEnv.js'
 import { startBloxityLeaderboards } from './bloxityLeaderboards.js'
-import { closeStorage, openStorage } from './db.js'
+import { closeStorage, flushEvents, openStorage, recentEvents } from './db.js'
 import { gemsWebhook, startGemsPoller } from './gems.js'
 import { installRoomReporter } from './legionRoomReporter.js'
 import { startLeaderboards } from './leaderboards.js'
 import { activePlayers } from './registry.js'
 import { GameRoom } from './rooms/GameRoom.js'
+import { summarize } from '../../shared/analytics.js'
 
 // Bloxity Legion injects PORT (HTTP and WebSocket share it); 2567 is Colyseus's usual.
 const PORT = Number(process.env.PORT || 2567)
@@ -41,7 +42,7 @@ function routes(app) {
 
   app.get('/api/health', (_req, res) => {
     // `game` lets a development client tell this server from another project's.
-    res.json({ ok: true, game: '1-arm-length', players: activePlayers.size })
+    res.json({ ok: true, game: 'lucky-sky-brawl', players: activePlayers.size })
   })
 
   /**
@@ -66,6 +67,24 @@ function routes(app) {
    * buyer plays on. See gems.js.
    */
   app.post('/api/gems/webhook', gemsWebhook)
+
+  /**
+   * The gameplay report: round length, how people die, where they quit, the tutorial
+   * funnel (shared/analytics.js). Needs ANALYTICS_TOKEN as a Bearer token (or ?token=);
+   * without one set it's open in development and off in production.
+   */
+  app.get('/api/analytics', async (req, res) => {
+    const token = process.env.ANALYTICS_TOKEN
+    const given = (req.get('authorization') || '').replace(/^Bearer /i, '') || String(req.query.token || '')
+    if (token ? given !== token : process.env.NODE_ENV === 'production') return res.status(404).end()
+    const days = Math.min(90, Math.max(1, Number(req.query.days) || 7))
+    try {
+      const events = await recentEvents(days)
+      res.json({ days, events: events.length, ...summarize(events) })
+    } catch (err) {
+      res.status(500).json({ error: String(err?.message || err) })
+    }
+  })
 }
 
 await openStorage()
@@ -83,8 +102,9 @@ const stopTimers = []
 
 // SIGTERM (a deploy or scale-in) runs Colyseus' graceful shutdown: every room saves
 // and hands its players to another pod (GameRoom.onBeforeShutdown), then this.
-server.onShutdown(() => {
+server.onShutdown(async () => {
   for (const stop of stopTimers) stop()
+  await flushEvents()
   return closeStorage()
 })
 

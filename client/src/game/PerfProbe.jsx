@@ -1,57 +1,39 @@
 import { useFrame, useThree } from '@react-three/fiber'
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
+
+import { perfEnabled as enabled } from './perf'
 
 /**
- * Publishes renderer stats on `window.__ppPerf` once a second: draw calls, triangles,
- * FPS, live textures/geometries. Read by the automated perf check and handy in the
- * console; costs a few property writes per frame.
- *
- * Counts are for the last completed frame (three resets them at the start of each
- * render, and frame callbacks run before it).
+ * Exposes live render numbers as `window.__perf` when the page is opened with `?perf`
+ * (and always in development): draw calls and triangles of the last full frame (world
+ * plus first-person pass), FPS over the last second, and texture/geometry counts. Read
+ * by the automated performance check; costs nothing otherwise.
  */
-export function PerfProbe() {
+export default function PerfProbe() {
   const gl = useThree((s) => s.gl)
-  const scene = useThree((s) => s.scene)
-  const camera = useThree((s) => s.camera)
-  const acc = useRef({ frames: 0, since: 0, maxCalls: 0, maxTriangles: 0 })
-
-  // With ?debug, the scene and camera too, for the automated texture-memory audit and
-  // close-up screenshots (set runtime.camera.mode to anything else to steer it).
   useEffect(() => {
-    if (!window.__pp) return
-    window.__ppScene = scene
-    window.__ppCamera = camera
-    window.__ppGl = gl
-  }, [scene, camera, gl])
+    if (!enabled) return undefined
+    // Two render passes per frame: the counters are reset by hand (ViewModel.jsx).
+    gl.info.autoReset = false
+    window.__perf = { calls: 0, triangles: 0, fps: 0, textures: 0, geometries: 0, maxCalls: 0, maxTriangles: 0 }
+    return () => {
+      gl.info.autoReset = true
+    }
+  }, [gl])
 
   useFrame(() => {
-    const info = gl.info
-    const a = acc.current
-    a.frames += 1
-    a.maxCalls = Math.max(a.maxCalls, info.render.calls)
-    a.maxTriangles = Math.max(a.maxTriangles, info.render.triangles)
-
+    if (!enabled || !window.__perf) return
+    const p = window.__perf
     const now = performance.now()
-    if (a.since === 0) a.since = now
-    if (now - a.since < 1000) return
-    window.__ppPerf = {
-      fps: Math.round((a.frames * 1000) / (now - a.since)),
-      calls: info.render.calls,
-      triangles: info.render.triangles,
-      maxCalls: a.maxCalls,
-      maxTriangles: a.maxTriangles,
-      textures: info.memory.textures,
-      geometries: info.memory.geometries,
-      programs: info.programs?.length ?? 0,
-      pixelRatio: gl.getPixelRatio(),
+    p.frames = (p.frames || 0) + 1
+    if (!p.since) p.since = now
+    if (now - p.since >= 1000) {
+      p.fps = Math.round((p.frames * 1000) / (now - p.since))
+      p.frames = 0
+      p.since = now
     }
-    a.frames = 0
-    a.since = now
-    a.maxCalls = 0
-    a.maxTriangles = 0
+    p.textures = gl.info.memory.textures
+    p.geometries = gl.info.memory.geometries
   })
-
   return null
 }
-
-export default PerfProbe

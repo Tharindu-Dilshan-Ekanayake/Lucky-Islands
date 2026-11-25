@@ -1,110 +1,98 @@
-import { isPadUnlocked } from '@shared/logic'
-import { eggStandNear, FREE_REWARD, inRollZone, nearLaunchPosts, PAD_COUNT, padAt, padRect, portalAt, SPHINX_STAND, standAt, STAR } from '@shared/world'
+import { LAVA } from '@shared/balance'
+import { CENTER } from '@shared/maps'
 
-import { sfx } from '../audio/sfx'
-import { actions } from '../net/actions'
-import { getGame, useGame } from '../store/game'
-import { padLabelSpec } from './labels/lobbyLabels'
-import { updateWorldLabel } from './labels/registry'
+import { setAmbience, setMusicMood, sfx } from '../audio/sfx'
+import { actions, send } from '../net/actions'
+import { getGame } from '../store/game'
 import { runtime } from './runtime'
-
-const TICK_MS = 100
-
-function sameZone(a, b) {
-  return (
-    a.pad === b.pad &&
-    a.padNear === b.padNear &&
-    a.sphinx === b.sphinx &&
-    a.rollZone === b.rollZone &&
-    a.atPosts === b.atPosts &&
-    a.stand === b.stand &&
-    a.egg === b.egg &&
-    a.portal === b.portal &&
-    a.freeReward === b.freeReward
-  )
-}
-
-/** Locked pads become solid walls for the controller; their signs say what's open. */
-function syncPads(profile) {
-  const walls = []
-  for (let i = 0; i < PAD_COUNT; i += 1) {
-    const unlocked = isPadUnlocked(profile, i)
-    if (!unlocked) walls.push(padRect(i))
-    updateWorldLabel(`pad-${i}`, padLabelSpec(i, unlocked, profile.world || 0))
-  }
-  runtime.dynamicColliders = walls
-}
-
-/** What syncPads depends on, so it only runs when that changes. */
-const padKey = (profile) => `${profile.rebirths}:${profile.world || 0}:${profile.passes.padVeryOp ? 1 : 0}${profile.passes.padBest ? 1 : 0}`
+import { lobbyLayout } from './world'
+import { t } from '../ui/i18n'
 
 /**
- * The 10 Hz bridge between the frame-rate world and the UI: works out which zone the
- * player stands in, tells the authority about pad changes, and
- * keeps locked-pad walls in step with the profile. This - not the render loop - is
- * what writes zone state into the store, and only when something actually changed.
- *
- * @returns {() => void} stop
+ * The only bridge from per-frame state to the UI: ten times a second, copies the slow
+ * things the HUD shows out of `runtime` into the store - the station in reach, who you
+ * are spectating, tutorial steps - and plays the lava warning. Never from a frame loop.
  */
 export function startGameTicker() {
-  let lastPad = -1
-  let lastKey = padKey(getGame().profile)
-
-  syncPads(getGame().profile)
-  const unsubscribe = useGame.subscribe((state, prev) => {
-    if (state.profile === prev.profile) return
-    const key = padKey(state.profile)
-    if (key === lastKey) return
-    lastKey = key
-    syncPads(state.profile)
-  })
-
-  let starAskedAt = -Infinity
-  const tick = () => {
+  let lavaWarned = false
+  let surgeWarned = false
+  let lavaLessonAt = 0
+  let tutorialSent = false
+  let tutorialReported = 0
+  let lastCount = -1
+  const id = setInterval(() => {
     const game = getGame()
-    const p = runtime.player.position
-    const egg = eggStandNear(p.x, p.z)
-    const zone = {
-      pad: padAt(p.x, p.z, -0.2),
-      // Standing at a pad's edge (a locked one's wall stops you there).
-      padNear: padAt(p.x, p.z, 1.8),
-      sphinx: Math.hypot(p.x - SPHINX_STAND.x, p.z - SPHINX_STAND.z) < 5.5,
-      rollZone: inRollZone(p.x, p.z),
-      // Close enough to the launch posts to grab them.
-      atPosts: nearLaunchPosts(p.x, p.z),
-      stand: standAt(p.x, p.z),
-      egg: egg ? egg.eggId : null,
-      portal: portalAt(p.x, p.z)?.id ?? null,
-      freeReward: Math.hypot(p.x - FREE_REWARD.x, p.z - FREE_REWARD.z) < FREE_REWARD.radius,
-    }
-    // Palm Beach's Secret Star: walking into it picks it up (asked at most once a second).
-    const { profile } = game
-    if (profile.world === 1 && !profile.secretStars?.world2 && Math.hypot(p.x - STAR.x, p.z - STAR.z) < STAR.radius) {
-      const now = performance.now()
-      if (now - starAskedAt > 1000) {
-        starAskedAt = now
-        actions.findStar()
-      }
-    }
-    if (!sameZone(zone, game.zone)) {
-      if (zone.portal && zone.portal !== game.zone.portal) actions.portal()
-      game.setZone(zone)
-    }
-    if (zone.pad !== lastPad) {
-      if (zone.pad >= 0 && isPadUnlocked(game.profile, zone.pad)) {
-        actions.enterPad(zone.pad)
-        sfx.treadmillEnter()
-      } else {
-        sfx.treadmillStop()
-        if (lastPad >= 0) actions.leavePad()
-      }
-      lastPad = zone.pad
-    }
-  }
+    const b = runtime.player.body
 
-  const id = setInterval(tick, TICK_MS)
-  return () => {
-    clearInterval(id)
-    unsubscribe()
-  }
+    // A case station in reach (lobby only).
+    let prompt = null
+    if (runtime.zone === 'lobby') {
+      for (const st of lobbyLayout().stations) {
+        if (Math.hypot(b.x - st.x, b.z - st.z) < st.r && Math.abs(b.y - st.y) < 3) prompt = st.id
+      }
+    }
+    game.setPrompt(prompt)
+
+    // Spectating: whose round we're watching.
+    if (runtime.zone === 'spec') {
+      const r = runtime.remotes.get(runtime.spectate.eid)
+      game.setSpectating(r ? r.name || 'Player' : null)
+    } else game.setSpectating(null)
+
+    // Tutorial: made it to the middle island; then a hit; then the lava lesson.
+    if (game.tutorial === 2 && runtime.zone === 'match' && Math.hypot(b.x - CENTER.x, b.z - CENTER.z) < 11) game.setTutorial(3)
+    if (game.tutorial === 4) {
+      lavaLessonAt ||= performance.now()
+      if (performance.now() - lavaLessonAt > 9000 || (runtime.zone === 'match' && b.y > runtime.lava.y + 12 && runtime.lava.y > 6.3)) game.setTutorial(5)
+    }
+    // Analytics: how far through the tutorial people get.
+    if (game.tutorial > tutorialReported && !game.profile.tutorial) {
+      tutorialReported = game.tutorial
+      send('tut', { step: game.tutorial })
+    }
+    if (game.tutorial >= 5 && !game.profile.tutorial && !tutorialSent) {
+      tutorialSent = true
+      actions.tutorialDone()
+    }
+
+    // The lava starts to climb: one rumble per round.
+    const phase = game.phase
+    if (phase.phase === 'fight' && runtime.zone === 'match') {
+      if (!lavaWarned && runtime.lava.y > 6.3) {
+        lavaWarned = true
+        sfx.lavaWarn()
+      }
+      // The surge: from here the lava floods the islands.
+      if (!surgeWarned && runtime.lava.y > LAVA.surgeY + 0.2) {
+        surgeWarned = true
+        sfx.lavaWarn()
+        game.showToast(t('The lava is surging - get high or get to the middle!'), 'error')
+      }
+    } else {
+      lavaWarned = false
+      surgeWarned = false
+    }
+
+    // Music and ambience follow where you are and how tight the round is.
+    const inRound = runtime.zone !== 'lobby'
+    const tense = inRound && phase.phase === 'fight' && (runtime.lava.y > 6.3 || (phase.teamSize > 1 ? phase.teamsLeft : phase.alive) <= 2)
+    setMusicMood(!inRound ? 'lobby' : tense ? 'tense' : 'match')
+    if (!inRound) setAmbience('wind', 0.8)
+    else {
+      const above = b.y - runtime.lava.y
+      setAmbience('lava', runtime.zone === 'spec' ? 0.35 : Math.max(0.12, 1 - above / 26))
+    }
+
+    // Countdown beeps: the last three seconds in the cages.
+    const count = phase.phase === 'cages' && inRound ? Math.ceil((phase.endsAt - performance.now()) / 1000) : -1
+    if (count !== lastCount) {
+      if (count >= 1 && count <= 3) sfx.countdown(count)
+      // The cages just opened: GO!
+      else if (lastCount >= 0 && phase.phase === 'fight') sfx.go()
+      lastCount = count
+    }
+
+    game.pruneFeed()
+  }, 100)
+  return () => clearInterval(id)
 }

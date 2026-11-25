@@ -1,18 +1,19 @@
-import { useCallback, useEffect, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useState } from 'react'
 
 import GameController from './GameController'
-import { useGame } from './store/game'
 import GameScene from './game/GameScene'
-import HatchOverlay from './ui/HatchOverlay'
-import HUD from './ui/hud/HUD'
+import { useGame } from './store/game'
+import ClickToPlay from './ui/ClickToPlay'
+import HUD from './ui/HUD'
 import LoadingScreen from './ui/LoadingScreen'
-import NameplateLayer from './ui/NameplateLayer'
-import { prefetchPanels } from './ui/panels/panelLoaders'
-import Panels from './ui/panels/Panels'
-import PopupLayer from './ui/PopupLayer'
 import ReplacedOverlay from './ui/ReplacedOverlay'
-import ScreenFade from './ui/ScreenFade'
+import ResultOverlay from './ui/ResultOverlay'
 import TouchControls from './ui/TouchControls'
+
+// Panels and the case opening aren't needed until someone opens one: their own chunk,
+// fetched once the game is up.
+const loadPanels = () => import('./ui/Panels')
+const Panels = lazy(loadPanels)
 
 function App() {
   const [ready, setReady] = useState(false)
@@ -21,30 +22,31 @@ function App() {
     useGame.getState().setPlayable()
   }, [])
 
-  // The HUD is mounted once the 3D scene is up rather than underneath the loading
-  // screen, where its first style/layout/paint (dozens of outlined labels and SVG
-  // icons) would delay the scene's own start-up for a screen nobody can see yet.
   useEffect(() => {
     if (!ready) return
     requestAnimationFrame(() => performance.mark('pp:hud-shown'))
-    prefetchPanels()
+    const id = setTimeout(loadPanels, 1500)
+    return () => clearTimeout(id)
   }, [ready])
 
   return (
-    <div className="relative h-full w-full select-none overflow-hidden">
+    <div className="relative h-full w-full select-none overflow-hidden font-pixel">
       <GameController />
       <GameScene onReady={handleReady} />
-      <TouchControls />
+      <div id="nameplates" />
+      <div id="hurt-vignette" />
+      <div className="screen-vignette" />
       {ready && (
         <>
-          <NameplateLayer />
-          <PopupLayer />
           <HUD />
-          <Panels />
-          <HatchOverlay />
+          <ResultOverlay />
+          <ClickToPlay />
+          <TouchControls />
+          <Suspense fallback={null}>
+            <Panels />
+          </Suspense>
         </>
       )}
-      <ScreenFade />
       <ReplacedOverlay />
       <LoadingScreen done={ready} />
     </div>

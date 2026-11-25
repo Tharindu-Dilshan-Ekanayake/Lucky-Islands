@@ -1,36 +1,32 @@
 import { Room } from '@colyseus/core'
 
 import { AD_REWARDS } from '../../../shared/balance.js'
-import { applyOfflineProgress } from '../../../shared/logic.js'
+import { GameHost } from '../../../shared/host.js'
 import { PlayerSession } from '../../../shared/session.js'
-import { clampToWalkable, isRollReturn, MAX_MOVE_SPEED, SPAWN } from '../../../shared/world.js'
 import { resolveIdentity, verifyAdReward } from '../bloxityApi.js'
 import { reportLeaver } from '../bloxityLeaderboards.js'
-import { carryOverGuest, getSphinxStock, loadProfile, saveProfile, takeSphinx } from '../db.js'
+import { carryOverGuest, loadProfile, recordEvent, saveProfile } from '../db.js'
 import { applyGemsForSession } from '../gems.js'
 import { getLeaderboards } from '../leaderboards.js'
-import { activePlayers, broadcastAll, liveRooms } from '../registry.js'
+import { activePlayers, liveRooms } from '../registry.js'
 import { GameState, PlayerState } from './schema.js'
 
 const MAX_CLIENTS = 8
 const RECONNECT_SECONDS = 20
 const AUTOSAVE_MS = 30_000
-/** State patches to clients, and the training simulation, per second. */
-const PATCH_HZ = 15
-const SIM_HZ = 10
-/** Allowance on top of max speed for a position update to be accepted. */
-const MOVE_SLACK = 2.5
+/** The round simulation: bots, projectiles, lava (GameHost). */
+const SIM_HZ = GameHost.SIM_HZ
 /** Close code used when the same player joins somewhere else (4000-4010 are Colyseus's own). */
 const DUPLICATE_LOGIN = 4100
 /** Names this server process in save ownership; Legion sets POD_NAME per pod. */
 const POD = process.env.POD_NAME || `local-${process.pid}`
-
-/** What other players may be told someone is doing. */
-const ANIMS = ['idle', 'walk', 'run', 'jump', 'pull']
-/** A Boxity emote, replicated through `anim` as 'emote:<its 24-hex id>'. */
-const EMOTE_ANIM = /^emote:[a-f0-9]{24}$/
 /** Least time between two 'gemsCheck's from one player (each is a database query). */
 const GEMS_CHECK_MS = 2000
+
+/** Round messages the host handles; everything else is a lobby/profile action. */
+const HOST_MESSAGES = new Set(['tut', 'pos', 'sel', 'dig', 'break', 'place', 'attack', 'use', 'swing', 'vote', 'afk', 'spectate', 'lobby', 'look', 'qc', 'voteMap', 'voteBots', 'joinRound'])
+/** Profile actions the session handles. */
+const SESSION_MESSAGES = new Set(['openCase', 'equip', 'claimDaily', 'welcomeGift', 'tutorialDone'])
 
 /** Unambiguous characters for lobby codes people read out to each other. */
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -44,58 +40,64 @@ const cleanName = (name) =>
     .slice(0, 20) || 'Player'
 
 /**
- * One lobby: up to 8 players sharing a world. All game rules run in each player's
- * PlayerSession; the room handles networking, position validation, persistence and
- * the small shared state other players render from.
+ * One server: up to 8 players sharing a lobby and its rounds. The rounds themselves run
+ * in GameHost (shared with the offline game); this room adds networking, identity,
+ * saves, Boxity rewards, and the small synced state the platform reads (who's here).
  */
 export class GameRoom extends Room {
   maxClients = MAX_CLIENTS
   autoDispose = true
 
   /**
-   * sessionId -> { session, playerId, verified, owner, lastPos, lastPosAt, kicked?,
-   *                reconnection?, adPending?, gemsCheckAt? }
-   * `owner` claims the player's save for this session (see db.js); `verified` says
-   * Boxity vouched for the id (see bloxityApi.js).
+   * sessionId -> { session, playerId, verified, owner, kicked?, reconnection?,
+   *                adPending?, gemsCheckAt? }
    */
   members = new Map()
 
   onCreate(options = {}) {
     this.setState(new GameState())
     if (options.private) {
-      // A short code friends can type instead of the long generated room id.
       this.roomId = makeCode()
       this.state.code = this.roomId
       this.state.isPrivate = true
       this.setPrivate(true)
     }
-    this.setPatchRate(1000 / PATCH_HZ)
+    this.host = new GameHost({
+      send: (sid, type, payload) => this.sendTo(sid, type, payload),
+      onAnalytics: (type, data) => recordEvent(type, data),
+      onReward: (sid, result) => {
+        const member = this.members.get(sid)
+        if (!member || member.kicked) return
+        member.session.awardRound(result)
+        this.syncPlayer(sid)
+      },
+    })
     this.setSimulationInterval((dt) => this.tick(dt / 1000), 1000 / SIM_HZ)
     this.updateListing()
     liveRooms.add(this)
 
-    // Everything the client can ask for goes through the player's session.
     this.onMessage('*', (client, type, payload) => {
-      if (type === 'pos') return this.handlePosition(client, payload)
-      if (type === 'look') return this.handleLook(client, payload)
-      // Boxity rewards: checked with Boxity by the server, never granted on the client's word.
+      type = String(type)
+      if (HOST_MESSAGES.has(type)) return this.host.message(client.sessionId, type, payload || {})
       if (type === 'adReward') return this.handleAdReward(client, payload)
       if (type === 'gemsCheck') return this.handleGemsCheck(client)
-      const member = this.members.get(client.sessionId)
-      if (!member) return
-      member.session.handle(String(type), payload || {}, Date.now())
-      this.syncPlayer(client.sessionId)
+      if (SESSION_MESSAGES.has(type)) {
+        const member = this.members.get(client.sessionId)
+        if (!member) return
+        member.session.handle(type, payload || {}, Date.now())
+        this.syncPlayer(client.sessionId)
+      }
     })
 
     this.autosave = setInterval(() => this.saveAll(), AUTOSAVE_MS)
   }
 
-  /**
-   * Who is joining. Join options are `{ playerId, name, token, gameSlug }`, `token`
-   * being the Boxity SDK's game token (null for guests). A token is verified with
-   * Boxity and its account id becomes the save key; without one the player is a guest.
-   * See resolveIdentity for the details. Throwing refuses the join.
-   */
+  /** Sends to a player by session id (the current client object, after reconnects). */
+  sendTo(sessionId, type, payload) {
+    const client = this.clients.find((c) => c.sessionId === sessionId)
+    if (client) client.send(type, payload)
+  }
+
   async onAuth(_client, options) {
     const identity = await resolveIdentity(options)
     return { ...identity, name: cleanName(identity.name || options?.name) }
@@ -104,96 +106,46 @@ export class GameRoom extends Room {
   async onJoin(client, _options, auth) {
     const { playerId, name, verified = false, carriedFrom = [] } = client.auth || auth
 
-    // Same account joining again (a refresh, a new tab, a reconnect the old session
-    // hasn't noticed yet): the newest connection wins. The old one is saved and removed
-    // at once, even when it's only a seat held open for a reconnect - otherwise a
-    // frozen copy of the player would stand in the lobby until that ran out.
     const existing = activePlayers.get(playerId)
     if (existing) await existing.room.evict(existing.client, 'You joined from another window.')
 
     const now = Date.now()
     const owner = `${POD}:${client.sessionId}`
-    // An account's first visit brings along what it played as a guest (once only).
     if (verified && carriedFrom.length) {
       const from = await carryOverGuest(playerId, carriedFrom, name)
       if (from) console.log(`[room] carried guest ${from} into ${playerId}`)
     }
     const profile = await loadProfile(playerId, name, owner)
-    const offline = applyOfflineProgress(profile, now)
 
     const player = new PlayerState()
-    const spawnX = SPAWN.x + (Math.random() - 0.5) * 6
-    const spawnZ = SPAWN.z + (Math.random() - 0.5) * 4
-    // `uid` lets clients match Boxity chat to players; only a verified id is shown.
-    Object.assign(player, { name, uid: verified ? playerId : '', x: spawnX, y: 0, z: spawnZ, rotY: Math.PI, anim: 'idle' })
+    Object.assign(player, { name, uid: verified ? playerId : '' })
     this.state.players.set(client.sessionId, player)
 
+    const sid = client.sessionId
     const session = new PlayerSession(profile, {
       now,
-      emit: (type, payload) => client.send(type, payload),
-      getPosition: () => player,
-      // The friends bonus: everyone else here, in the same world as you.
-      getOthers: () => {
-        let others = 0
-        for (const [sid, p] of this.state.players) if (sid !== client.sessionId && (p.world || 0) === (profile.world || 0)) others += 1
-        return others
-      },
-      onPurchase: (productId) => {
-        if (productId !== 'sphinx') return true
-        const ok = takeSphinx()
-        if (ok) broadcastAll('stock', { sphinx: getSphinxStock() })
-        return ok
-      },
-      onRoll: (result) => {
-        // Everyone else watches it as a ghost tire. Excluded by session id, not by the
-        // client object from the join: after a reconnect that object is stale, and the
-        // roller would get their own roll back as a second tire.
-        const self = this.clients.find((c) => c.sessionId === client.sessionId)
-        this.broadcast(
-          'ghostRoll',
-          {
-            sid: client.sessionId,
-            distance: result.distance,
-            duration: result.duration,
-            blocked: result.blocked,
-            tireId: profile.equippedTire,
-            // How well it was timed: others see the jump smash and the flight it made.
-            hit: result.hit,
-            world: profile.world,
-            x: player.x,
-            z: player.z,
-          },
-          self ? { except: self } : undefined,
-        )
-      },
+      emit: (type, payload) => this.sendTo(sid, type, payload),
+      onLook: (look) => this.host.setLook(sid, look),
     })
-
-    this.members.set(client.sessionId, { session, playerId, verified, owner, lastPos: { x: spawnX, z: spawnZ }, lastPosAt: now })
+    this.members.set(sid, { session, playerId, verified, owner })
     activePlayers.set(playerId, { room: this, client })
 
     session.sendProfile()
-    client.send('spawn', { x: spawnX, z: spawnZ })
-    client.send('stock', { sphinx: getSphinxStock() })
+    this.host.join(sid, name, session.look())
     client.send('leaderboards', getLeaderboards())
-    if (offline) client.send('offline', offline)
-    this.syncPlayer(client.sessionId)
+    this.syncPlayer(sid)
     this.updateListing()
-    // Gems bought while away (or on another pod) land now.
-    applyGemsForSession(this, client.sessionId)
+    applyGemsForSession(this, sid)
   }
 
-  /** Dropped without saying goodbye (mobile network blip): hold the seat. */
   async onDrop(client) {
     const member = this.members.get(client.sessionId)
     if (!member || member.kicked) return
-    // Stop training while away; the seat stays warm for the reconnect.
-    member.session.handle('leavePad', {}, Date.now())
     member.reconnection = this.allowReconnection(client, RECONNECT_SECONDS)
     try {
       await member.reconnection
     } catch {
-      // Window expired, or the player came back as a new session (evict); onLeave
-      // cleans up.
+      // Window expired or replaced; onLeave cleans up.
     } finally {
       member.reconnection = null
     }
@@ -203,12 +155,13 @@ export class GameRoom extends Room {
     const member = this.members.get(client.sessionId)
     if (!member) return
     activePlayers.set(member.playerId, { room: this, client })
-    member.session.emit = (type, payload) => client.send(type, payload)
     member.session.sendProfile()
   }
 
   async onLeave(client) {
     const member = this.members.get(client.sessionId)
+    // The host first: leaving mid-round still pays out the round so far.
+    this.host.leave(client.sessionId)
     this.state.players.delete(client.sessionId)
     if (member) {
       if (activePlayers.get(member.playerId)?.client === client) activePlayers.delete(member.playerId)
@@ -221,11 +174,6 @@ export class GameRoom extends Room {
     this.updateListing()
   }
 
-  /**
-   * The pod is going away (a deploy, or scaling in): save everyone, then close with
-   * SERVER_SHUTDOWN, which sends each client back through the matchmaker to a pod
-   * that's staying.
-   */
   async onBeforeShutdown() {
     await this.saveAll()
     super.onBeforeShutdown()
@@ -237,15 +185,9 @@ export class GameRoom extends Room {
     await this.saveAll()
   }
 
-  // --- Helpers -----------------------------------------------------------------------
-
-  /**
-   * Saves and removes a player who has joined again elsewhere: gone from everyone's
-   * view at once, and a seat held for their reconnect let go rather than left to run
-   * out.
-   */
   async evict(client, reason) {
     const member = this.members.get(client.sessionId)
+    this.host.leave(client.sessionId)
     this.state.players.delete(client.sessionId)
     if (member && !member.kicked) {
       member.kicked = true
@@ -256,7 +198,7 @@ export class GameRoom extends Room {
       client.send('kicked', { reason })
       client.leave(DUPLICATE_LOGIN)
     } catch {
-      // Already disconnected (the held-seat case).
+      // Already disconnected.
     }
   }
 
@@ -272,63 +214,16 @@ export class GameRoom extends Room {
     })
   }
 
-  /** Copies the public bits of a profile into the synced state (only what changed). */
+  /** Copies the public bits of a profile into the synced state. */
   syncPlayer(sessionId) {
     const member = this.members.get(sessionId)
     const player = this.state.players.get(sessionId)
     if (!member || !player) return
     const p = member.session.profile
-    if (player.health !== p.health) player.health = p.health
     if (player.wins !== p.wins) player.wins = p.wins
-    if (player.rebirths !== p.rebirths) player.rebirths = p.rebirths
-    if (player.level !== p.level) player.level = p.level
-    if (player.tireId !== p.equippedTire) player.tireId = p.equippedTire
-    if (player.world !== p.world) player.world = p.world
-    const pets = p.equippedPets
-      .map((uid) => p.pets.find((pet) => pet.uid === uid)?.id)
-      .filter(Boolean)
-    if (pets.join() !== [...player.petIds].join()) {
-      player.petIds.clear()
-      for (const id of pets) player.petIds.push(id)
-    }
+    if (player.kills !== p.kills) player.kills = p.kills
   }
 
-  /**
-   * Position reports, ~10 Hz from each client. Accepted if the move is physically
-   * possible since the last accepted one (or is the hop back after a roll);
-   * otherwise the client is snapped back.
-   */
-  handlePosition(client, msg) {
-    const member = this.members.get(client.sessionId)
-    const player = this.state.players.get(client.sessionId)
-    if (!member || !player || !msg) return
-    const x = Number(msg.x)
-    const y = Number(msg.y)
-    const z = Number(msg.z)
-    if (![x, y, z].every(Number.isFinite)) return
-
-    const now = Date.now()
-    const dt = Math.max(0.05, (now - member.lastPosAt) / 1000)
-    const dist = Math.hypot(x - member.lastPos.x, z - member.lastPos.z)
-    if (dist > MAX_MOVE_SPEED * dt + MOVE_SLACK && !isRollReturn(member.lastPos, { x, z })) {
-      client.send('correct', { x: member.lastPos.x, y: player.y, z: member.lastPos.z })
-      return
-    }
-    const clamped = clampToWalkable(x, z)
-    member.lastPos = clamped
-    member.lastPosAt = now
-    player.x = clamped.x
-    player.y = Math.max(0, Math.min(y, 6))
-    player.z = clamped.z
-    player.rotY = Number(msg.r) || 0
-    player.anim = ANIMS.includes(msg.a) || (typeof msg.a === 'string' && EMOTE_ANIM.test(msg.a)) ? msg.a : 'idle'
-  }
-
-  /**
-   * 'adReward' `{ placement, rewardToken }`: the client watched a rewarded ad. Paid
-   * only once Boxity confirms the token, and only within the placement's cooldown
-   * (applyAdReward); one check at a time per player.
-   */
   async handleAdReward(client, msg) {
     const member = this.members.get(client.sessionId)
     const placement = String(msg?.placement || '')
@@ -338,16 +233,13 @@ export class GameRoom extends Room {
     member.adPending = true
     try {
       if (!(await verifyAdReward(rewardToken))) return
-      // Still here after the wait?
       if (this.members.get(client.sessionId) !== member || member.kicked) return
       member.session.grantAdReward(placement, Date.now())
-      this.syncPlayer(client.sessionId)
     } finally {
       member.adPending = false
     }
   }
 
-  /** 'gemsCheck': the client saw a purchase complete; look for its grant now. */
   handleGemsCheck(client) {
     const member = this.members.get(client.sessionId)
     const now = Date.now()
@@ -356,36 +248,8 @@ export class GameRoom extends Room {
     applyGemsForSession(this, client.sessionId)
   }
 
-  /**
-   * What a player's avatar wears, so everyone else can dress them the same. Purely
-   * cosmetic, so trusted as sent, but kept to a small object of short strings and
-   * plain numbers.
-   */
-  handleLook(client, msg) {
-    const player = this.state.players.get(client.sessionId)
-    if (!player || !msg || typeof msg !== 'object') return
-    const clean = (obj, keep) => {
-      const out = {}
-      if (!obj || typeof obj !== 'object') return out
-      for (const [key, value] of Object.entries(obj).slice(0, 24)) {
-        if (key.length > 24) continue
-        if (keep(value)) out[key] = value
-      }
-      return out
-    }
-    const look = JSON.stringify({
-      equipped: clean(msg.equipped, (v) => (typeof v === 'string' && v.length <= 40) || (Number.isFinite(v) && Math.abs(v) < 1e12)),
-      // Boxity's ranges: legOffsetX -0.7 to 5, armLength from 0.05, the rest within 0.3 to 2.6.
-      proportions: clean(msg.proportions, (v) => Number.isFinite(v) && v >= -1 && v <= 6),
-    })
-    if (look.length <= 2048 && look !== player.look) player.look = look
-  }
-
   tick(dt) {
-    const now = Date.now()
-    for (const [sessionId, member] of this.members) {
-      member.session.tick(dt, now)
-      this.syncPlayer(sessionId)
-    }
+    this.host.tick(dt)
+    for (const member of this.members.values()) member.session.tick(dt)
   }
 }
