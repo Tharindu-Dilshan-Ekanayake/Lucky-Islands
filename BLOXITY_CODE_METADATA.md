@@ -13,8 +13,9 @@ below rises through the round. Last one standing wins. Empty islands are filled 
 bots (unless the room votes for no bots), so a round has up to 8 fighters. Between
 rounds the room votes in two steps: first the mode (Solo free-for-all, 4 Teams 2v2v2v2,
 3 Teams 3v3v2, 2 Teams 4v4, Max Luck, Lava Rush) with the bots (none / Easy / Normal /
-Hard), then the map: three of the nine maps (Sunny Meadow, Frosty Peaks, Candy Clouds,
-Dune Isles, Sky Castle, Ember Isles, Autumn Woods, Marble Temple, Jungle Ruins) are offered each round, never the last one played -
+Hard), then the map: six of the twelve maps (Sunny Meadow, Frosty Peaks, Candy Clouds,
+Dune Isles, Sky Castle, Ember Isles, Autumn Woods, Marble Temple, Jungle Ruins, Mushroom Grove, Tropical
+Bay, Brick Town) are offered each round, never the last one played -
 and the round starts. Each step ends as soon as everyone has voted. Players who arrive
 mid-round can spectate or join it, taking over a bot (or a free island). In team modes
 players are dealt evenly across the teams; there is no friendly fire and the whole

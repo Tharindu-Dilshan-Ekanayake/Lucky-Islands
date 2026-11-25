@@ -125,6 +125,45 @@ export const MAPS = {
     decoChance: 0.28,
     sky: ['#3fae8a', '#d8ffe9'],
   },
+  mushroom: {
+    name: 'Mushroom Grove',
+    top: B.GRASS,
+    fill: B.DIRT,
+    deep: B.STONE,
+    speck: B.ORE,
+    trunk: B.QUARTZ,
+    crown: B.WOOL_RED,
+    /** Its trees are giant mushrooms: a pale stem under a spotted red cap. */
+    mushrooms: true,
+    deco: [B.FLOWER_RED, B.TALL_GRASS],
+    sky: ['#8a5cc7', '#ffd1ee'],
+  },
+  tropical: {
+    name: 'Tropical Bay',
+    top: B.SAND,
+    fill: B.SAND,
+    deep: B.SANDSTONE,
+    speck: B.GOLD,
+    trunk: B.LOG,
+    crown: B.LEAVES,
+    /** Palm trees: a tall trunk with fronds spread flat. */
+    palms: true,
+    deco: [B.TALL_GRASS],
+    decoChance: 0.06,
+    sky: ['#2ab3e8', '#d9f7ff'],
+  },
+  bricktown: {
+    name: 'Brick Town',
+    top: B.PATH,
+    fill: B.DIRT,
+    deep: B.BRICK,
+    speck: B.STONE_BRICKS,
+    trunk: B.LOG,
+    crown: B.LEAVES,
+    deco: [B.LAMP, B.FLOWER_YELLOW],
+    decoChance: 0.05,
+    sky: ['#5f9ad8', '#f0e6d8'],
+  },
 }
 export const MAP_IDS = Object.keys(MAPS)
 
@@ -167,6 +206,30 @@ function island(world, rng, map, cx, cz, radius, top, depth = 9) {
 }
 
 function tree(world, map, x, y, z, rng) {
+  if (map.mushrooms) {
+    const h = 3 + Math.floor(rng() * 2)
+    for (let i = 0; i < h; i += 1) world.set(x, y + i, z, B.QUARTZ)
+    for (let dx = -2; dx <= 2; dx += 1) {
+      for (let dz = -2; dz <= 2; dz += 1) {
+        if (Math.abs(dx) === 2 && Math.abs(dz) === 2) continue
+        const spot = (dx + dz * 3 + h) % 4 === 0
+        if (world.get(x + dx, y + h, z + dz) === B.AIR) world.set(x + dx, y + h, z + dz, spot ? B.WOOL_WHITE : B.WOOL_RED)
+      }
+    }
+    world.set(x, y + h + 1, z, B.WOOL_RED)
+    return
+  }
+  if (map.palms) {
+    const h = 5 + Math.floor(rng() * 2)
+    for (let i = 0; i < h; i += 1) world.set(x, y + i, z, B.LOG)
+    const top = y + h
+    world.set(x, top, z, B.LEAVES)
+    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      for (let r = 1; r <= 2; r += 1) if (world.get(x + dx * r, top, z + dz * r) === B.AIR) world.set(x + dx * r, top, z + dz * r, B.LEAVES)
+      if (world.get(x + dx * 3, top - 1, z + dz * 3) === B.AIR) world.set(x + dx * 3, top - 1, z + dz * 3, B.LEAVES)
+    }
+    return
+  }
   if (map.pillars) {
     // A marble column with a gold cap.
     const h = 3 + Math.floor(rng() * 2)
@@ -331,6 +394,63 @@ function landmark(world, mapId, cx, top, cz) {
     fill(cx - 1, y, cz - 1, cx + 1, y + 1, cz + 1, B.STONE_BRICKS)
     // The Mega block sits in the shrine, open to the sky.
     return { x: cx, y: y + 1, z: cz }
+  }
+  if (mapId === 'mushroom') {
+    // One giant mushroom: a 2x2 pale stem, a wide domed red cap with white spots.
+    for (let y = y0; y < y0 + 7; y += 1) fill(cx, y, cz, cx + 1, y, cz + 1, B.QUARTZ)
+    const capY = y0 + 7
+    for (let dy = 0; dy <= 2; dy += 1) {
+      const r = 5 - dy * 2
+      for (let x = cx - r; x <= cx + 1 + r; x += 1) {
+        for (let z = cz - r; z <= cz + 1 + r; z += 1) {
+          const ex = Math.max(cx - x, x - cx - 1, 0)
+          const ez = Math.max(cz - z, z - cz - 1, 0)
+          if (ex * ex + ez * ez > r * r + 1) continue
+          world.set(x, capY + dy, z, (x * 3 + z * 5 + dy) % 7 === 0 ? B.WOOL_WHITE : B.WOOL_RED)
+        }
+      }
+    }
+    for (const [dx, dz] of [[-5, 0], [6, 1], [0, -5], [1, 6]]) world.set(cx + dx, y0, cz + dz, B.LAMP)
+    return { x: cx, y: capY + 3, z: cz }
+  }
+  if (mapId === 'tropical') {
+    // A lighthouse: a striped round tower with a glass lantern room and a lamp.
+    for (let y = y0; y < y0 + 10; y += 1) {
+      const stripe = Math.floor((y - y0) / 2) % 2 ? B.WOOL_WHITE : B.WOOL_RED
+      for (let x = cx - 2; x <= cx + 2; x += 1) {
+        for (let z = cz - 2; z <= cz + 2; z += 1) {
+          if (Math.abs(x - cx) === 2 && Math.abs(z - cz) === 2) continue
+          world.set(x, y, z, stripe)
+        }
+      }
+    }
+    fill(cx - 2, y0 + 10, cz - 2, cx + 2, y0 + 10, cz + 2, B.PLANKS)
+    for (let x = cx - 1; x <= cx + 1; x += 1) for (let z = cz - 1; z <= cz + 1; z += 1) world.set(x, y0 + 11, z, x === cx && z === cz ? B.LAMP : B.GLASS)
+    fill(cx - 1, y0 + 12, cz - 1, cx + 1, y0 + 12, cz + 1, B.WOOL_RED)
+    // A little pool by the tower.
+    fill(cx + 4, y0 - 1, cz - 1, cx + 6, y0 - 1, cz + 1, B.WATER)
+    return { x: cx, y: y0 + 13, z: cz }
+  }
+  if (mapId === 'bricktown') {
+    // A brick clock tower on a stone square, lamps at the corners.
+    fill(cx - 5, y0 - 1, cz - 5, cx + 5, y0 - 1, cz + 5, B.STONE_BRICKS)
+    for (let y = y0; y < y0 + 9; y += 1) {
+      for (let x = cx - 2; x <= cx + 2; x += 1) {
+        for (let z = cz - 2; z <= cz + 2; z += 1) {
+          const edge = Math.abs(x - cx) === 2 || Math.abs(z - cz) === 2
+          const door = y < y0 + 2 && x === cx && Math.abs(z - cz) === 2
+          if (edge && !door) world.set(x, y, z, (y - y0) % 4 === 3 ? B.STONE_BRICKS : B.BRICK)
+        }
+      }
+    }
+    // Clock faces: a lamp in the middle of each side, high up.
+    for (const [dx, dz] of [[2, 0], [-2, 0], [0, 2], [0, -2]]) world.set(cx + dx, y0 + 6, cz + dz, B.LAMP)
+    fill(cx - 2, y0 + 9, cz - 2, cx + 2, y0 + 9, cz + 2, B.STONE_BRICKS)
+    fill(cx - 1, y0 + 10, cz - 1, cx + 1, y0 + 10, cz + 1, B.BRICK)
+    for (const [dx, dz] of [[-5, -5], [5, -5], [-5, 5], [5, 5]]) world.set(cx + dx, y0, cz + dz, B.LAMP)
+    // Stairs inside up to the roof.
+    for (let i = 0; i < 9; i += 1) world.set(cx - 1 + (i % 3), y0 + i, cz - 1 + Math.floor(i / 3) % 3, B.PLANKS)
+    return { x: cx, y: y0 + 11, z: cz }
   }
   if (mapId === 'frost') {
     // An ice tower with a lookout on top.
