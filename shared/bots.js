@@ -39,6 +39,12 @@ export function createBrain(random, level = 'normal') {
     wander: null,
     pillarY: null,
     shootAt: 0,
+    // Personality: how far they'll go for a fight, and how soon they run when hurt.
+    aggression: 1 + random() * 0.5,
+    caution: random(),
+    retreatUntil: 0,
+    retreatReadyAt: 0,
+    backUntil: 0,
   }
 }
 
@@ -172,6 +178,8 @@ function decide(host, ent, now) {
     brain.goal = 'pillar'
     return
   }
+  // Still running away: keep running.
+  if (brain.goal === 'retreat' && now < brain.retreatUntil && host.ents.get(brain.target)?.alive) return
 
   // Someone close: fight (or shoot) them.
   let enemy = null
@@ -184,10 +192,33 @@ function decide(host, ent, now) {
       enemyDist = d
     }
   }
-  const bowSlot = findSlot(ent, (item) => item.kind === 'bow')
-  if (enemy && enemyDist < 11 && Math.abs(enemy.y - b.y) < 2.5 && walkable(w, b.x, b.y, b.z, enemy.x, enemy.z)) {
-    brain.goal = 'fight'
+  // Badly hurt, losing, with them right there: back off for a moment.
+  if (enemy && enemyDist < 5 && brain.caution > 0.45 && now > brain.retreatReadyAt && ent.hp <= ent.maxHp * 0.25 && ent.hp < enemy.hp) {
+    brain.goal = 'retreat'
     brain.target = enemy.eid
+    brain.retreatUntil = now + 1000 + brain.random() * 1000
+    brain.retreatReadyAt = now + 9000
+    return
+  }
+  // Of those we can walk to within fighting range, go for the weak (and stay on the
+  // one we're already fighting).
+  let foe = null
+  let foeScore = Infinity
+  const range = 11 * brain.aggression
+  for (const e of host.ents.values()) {
+    if (e === ent || e.zone !== 'match' || !e.alive || e.team === ent.team) continue
+    const d = Math.hypot(e.x - b.x, e.z - b.z)
+    if (d >= range || Math.abs(e.y - b.y) >= 2.5) continue
+    const score = d + (e.hp / (e.maxHp || 20)) * 3 - (e.eid === brain.target ? 2 : 0)
+    if (score < foeScore && walkable(w, b.x, b.y, b.z, e.x, e.z)) {
+      foe = e
+      foeScore = score
+    }
+  }
+  const bowSlot = findSlot(ent, (item) => item.kind === 'bow')
+  if (foe) {
+    brain.goal = 'fight'
+    brain.target = foe.eid
     return
   }
   // No sniping in the first seconds: give new players time to open their blocks.
@@ -268,7 +299,7 @@ export function thinkBot(host, ent, dt, now) {
     decide(host, ent, now)
   }
 
-  const input = { moveX: 0, moveZ: 0, jump: false, sprint: false, sneak: false, autoJump: true }
+  const input = { moveX: 0, moveZ: 0, jump: false, sprint: false, sneak: false, guard: false, autoJump: true }
   let face = null
   const moveTo = (tx, tz, stop = 0.4) => {
     const dx = tx - b.x
@@ -294,10 +325,19 @@ export function thinkBot(host, ent, dt, now) {
         ent.sel = weapon
         ent.dirty = true
       }
-      if (d > 2.3) {
+      if (now < brain.backUntil) {
+        // Hit and step back (better bots): out of their reach while our swing recharges.
+        face = { dx: t.x - b.x, dz: t.z - b.z }
+        const len = d || 1
+        input.moveX = -face.dx / len
+        input.moveZ = -face.dz / len
+        input.guard = true
+      } else if (d > 2.3) {
         moveTo(t.x, t.z, 2.2)
         input.sprint = d > 4
       } else {
+        // Circle them, but never strafe off an edge.
+        input.guard = true
         face = { dx: t.x - b.x, dz: t.z - b.z }
         if (now > brain.strafeAt) {
           brain.strafe = brain.random() < 0.5 ? 1 : -1
@@ -311,11 +351,32 @@ export function thinkBot(host, ent, dt, now) {
       const reach = Math.hypot(t.x - b.x, t.y - b.y, t.z - b.z)
       const wait = (ATTACK_COOLDOWN_MS + (1 - brain.skill) * 500 + brain.random() * 250) * brain.reaction
       if (reach < 3.1 && now - ent.lastAttackAt > wait) {
-        if (brain.random() < brain.skill + 0.1) host.melee(ent, t)
-        else {
+        if (brain.random() < brain.skill + 0.1) {
+          host.melee(ent, t)
+          if (brain.skill > 0.75 && brain.random() < 0.35) brain.backUntil = now + 200
+        } else {
           ent.lastAttackAt = now
           host.toZone('match', 'swing', { eid: ent.eid })
         }
+      }
+      break
+    }
+    case 'retreat': {
+      const t = host.ents.get(brain.target)
+      if (!t || !t.alive || now >= brain.retreatUntil) {
+        brain.thinkAt = 0
+        break
+      }
+      const dx = b.x - t.x
+      const dz = b.z - t.z
+      const len = Math.hypot(dx, dz) || 1
+      moveTo(b.x + (dx / len) * 4, b.z + (dz / len) * 4, 0.2)
+      input.sprint = true
+      input.guard = true
+      // Cornered (nowhere to run): turn and fight.
+      if (Math.hypot(b.x - brain.lastX, b.z - brain.lastZ) < 0.005 && len < 2.5) {
+        brain.goal = 'fight'
+        brain.thinkAt = now + 800
       }
       break
     }
