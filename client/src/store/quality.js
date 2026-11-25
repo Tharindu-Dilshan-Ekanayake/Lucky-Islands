@@ -4,8 +4,9 @@ import { create } from 'zustand'
  * Graphics quality presets. Every visual feature reads its settings from here rather
  * than deciding for itself, so dropping a preset reliably sheds load everywhere.
  *
- * LOW is the mobile / weak-PC baseline: no realtime shadows, no particles, no
- * post-processing, short view distance and textures capped at 512px.
+ * LOW is the mobile / weak-PC baseline: no particles or sparkles, no post-processing,
+ * a short view distance and textures capped at 512px. No preset uses realtime shadows:
+ * the blocks' shading is baked into their vertices.
  */
 export const QUALITY_LEVELS = ['LOW', 'MEDIUM', 'HIGH']
 
@@ -13,77 +14,52 @@ export const PRESETS = {
   LOW: {
     dpr: 1,
     antialias: false,
-    /** 'blob' = fake contact shadows only; 'realtime' = shadow-mapped sun. */
-    shadows: 'blob',
-    shadowMapSize: 0,
+    /** No realtime shadows on any preset: terrain shading is baked into the blocks. */
+    shadows: 'none',
     particles: false,
-    speedLines: true,
-    /** Motion blur down the sides at speed (post-processing): samples a pixel, 0 = off. */
-    motionBlur: 0,
-    viewDistance: 190,
-    fogNear: 60,
-    cloudCount: 8,
+    /** Sparkles over lucky blocks. */
+    sparkles: false,
+    viewDistance: 130,
+    fogNear: 45,
+    cloudCount: 10,
     /** Max side of any generated texture. */
     maxTexture: 512,
-    /**
-     * Other players are drawn this far away - the whole lobby - and the nearest
-     * `remoteAvatars` of them within `remoteAvatarDistance` as their real Boxity avatar
-     * (anyone else as the blocky figure). On every preset that's everyone in the room:
-     * players want to see each other as themselves, across the whole lobby. A Boxity
-     * avatar is ~100 triangles and one draw call plus one per worn item, so a full room
-     * of 8 typically adds 20-40 draw calls; if a weak device can't keep up, the FPS
-     * monitor lowers the resolution (RENDER_SCALES) rather than taking avatars away.
-     */
-    remoteDrawDistance: 150,
-    remoteAvatars: 7,
-    remoteAvatarDistance: 150,
-    remoteNameDistance: 40,
-    /** World labels fade out past this. */
-    labelDistance: 70,
-    /** How much of the canyon's scenery to spawn (0-1). */
-    decorDensity: 0.45,
-    /** Board and egg halo size multiplier. */
-    boardGlow: 0.8,
+    /** Other players drawn this far; names shown this far. */
+    remoteDrawDistance: 110,
+    /** Characters drawn as their Bloxity avatar (nearest first, you included); the rest blocky. */
+    avatarCount: 4,
+    remoteNameDistance: 30,
+    labelDistance: 50,
   },
   MEDIUM: {
     dpr: 1.25,
     antialias: true,
-    shadows: 'blob',
-    shadowMapSize: 0,
+    shadows: 'none',
     particles: true,
-    speedLines: true,
-    motionBlur: 8,
-    viewDistance: 300,
-    fogNear: 100,
-    cloudCount: 14,
+    sparkles: true,
+    viewDistance: 180,
+    fogNear: 70,
+    cloudCount: 18,
     maxTexture: 1024,
     remoteDrawDistance: 150,
-    remoteAvatars: 7,
-    remoteAvatarDistance: 150,
-    remoteNameDistance: 55,
-    labelDistance: 110,
-    decorDensity: 0.75,
-    boardGlow: 1,
+    avatarCount: 10,
+    remoteNameDistance: 45,
+    labelDistance: 70,
   },
   HIGH: {
     dpr: 1.5,
     antialias: true,
-    shadows: 'realtime',
-    shadowMapSize: 1024,
+    shadows: 'none',
     particles: true,
-    speedLines: true,
-    motionBlur: 12,
-    viewDistance: 460,
-    fogNear: 140,
-    cloudCount: 18,
+    sparkles: true,
+    viewDistance: 240,
+    fogNear: 100,
+    cloudCount: 26,
     maxTexture: 1024,
-    remoteDrawDistance: 150,
-    remoteAvatars: 7,
-    remoteAvatarDistance: 150,
-    remoteNameDistance: 70,
-    labelDistance: 150,
-    decorDensity: 1,
-    boardGlow: 1,
+    remoteDrawDistance: 200,
+    avatarCount: 12,
+    remoteNameDistance: 60,
+    labelDistance: 90,
   },
 }
 
@@ -140,7 +116,7 @@ export const useQuality = create((set, get) => ({
   settings: PRESETS[initialLevel],
   /**
    * Bumped when the player picks a new level by hand: the 3D view is rebuilt from
-   * scratch, so things set when it's made (antialiasing, scenery density, tire detail)
+   * scratch, so things set when it's made (antialiasing)
    * take the new level at once.
    */
   rebuild: 0,

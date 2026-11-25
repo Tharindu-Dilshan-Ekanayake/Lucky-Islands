@@ -1,85 +1,115 @@
 /**
- * Background music, made live with WebAudio like the sound effects: a bouncy game-day
- * loop for the stadium - a stomping kick drum and handclaps, ticking hats, a bass that
- * jumps octaves, punchy brass stabs and a chant-like hook over C - Am - F - G - kept
- * quiet under the game and the crowd.
+ * Background music, made live with WebAudio (no files): three moods that share one
+ * look-ahead scheduler and change on a bar line.
  *
- * Notes are scheduled a little ahead on the audio clock by a timer (the usual
- * look-ahead scheduler), never from the render loop.
+ * - lobby: a relaxed, warm groove - soft pad chords, a plucked melody, light drums
+ * - match: driving and bright - four-on-the-floor kick, pulsing bass, an arpeggio
+ * - tense: the match theme pushed harder for the lava's climb - faster arpeggio,
+ *          open filter, extra percussion
+ *
+ * Notes are scheduled a little ahead on the audio clock by a timer, never from the
+ * render loop.
  */
 
-const BPM = 112
-const EIGHTH = 60 / BPM / 2
 const LOOKAHEAD_S = 0.35
 const TICK_MS = 100
 
-/** One chord per bar, as MIDI notes: bass root, then the stabs' three voices. */
-const BARS = [
-  { root: 36, chord: [60, 64, 67] }, // C
-  { root: 33, chord: [60, 64, 69] }, // Am
-  { root: 41, chord: [60, 65, 69] }, // F
-  { root: 43, chord: [59, 62, 67] }, // G
-]
-/** Where in each bar (eighths) the brass stabs hit: on the one, then pushed off the beat. */
-const STABS = [0, 3, 6]
-/** The hook, a 4-bar chant: [eighth within the 32, MIDI note, eighths long]. */
-const HOOK = [
-  [0, 72, 2],
-  [2, 72, 1],
-  [3, 74, 1],
-  [4, 76, 3],
-  [8, 76, 2],
-  [10, 74, 1],
-  [11, 72, 1],
-  [12, 69, 3],
-  [16, 69, 2],
-  [18, 72, 1],
-  [19, 74, 1],
-  [20, 77, 3],
-  [24, 76, 2],
-  [26, 74, 2],
-  [28, 71, 2],
-  [30, 74, 2],
-]
-
 const freq = (midi) => 440 * 2 ** ((midi - 69) / 12)
+
+/** Per mood: tempo, the 4-bar progression (bass root + chord), melody, feel. */
+const MOODS = {
+  lobby: {
+    bpm: 96,
+    bars: [
+      { root: 41, chord: [65, 69, 72] }, // F
+      { root: 38, chord: [62, 65, 69] }, // Dm
+      { root: 46, chord: [65, 70, 74] }, // Bb
+      { root: 48, chord: [64, 67, 72] }, // C
+    ],
+    // [sixteenth within the 64, midi, sixteenths long]
+    melody: [
+      [0, 77, 3], [4, 76, 2], [6, 74, 2], [8, 72, 6], [16, 74, 3], [20, 72, 2], [22, 69, 2], [24, 72, 6],
+      [32, 70, 3], [36, 69, 2], [38, 67, 2], [40, 70, 6], [48, 72, 3], [52, 74, 2], [54, 76, 2], [56, 77, 7],
+    ],
+    drums: 'soft',
+    filter: 2600,
+  },
+  match: {
+    bpm: 124,
+    bars: [
+      { root: 33, chord: [57, 60, 64] }, // Am
+      { root: 41, chord: [57, 60, 65] }, // F
+      { root: 36, chord: [55, 60, 64] }, // C
+      { root: 43, chord: [55, 59, 62] }, // G
+    ],
+    melody: [
+      [0, 76, 2], [2, 76, 2], [4, 79, 2], [6, 76, 2], [8, 74, 4], [12, 72, 4], [16, 72, 2], [18, 74, 2], [20, 76, 4], [24, 69, 8],
+      [32, 76, 2], [34, 76, 2], [36, 79, 2], [38, 81, 2], [40, 79, 4], [44, 76, 4], [48, 74, 4], [52, 76, 4], [56, 71, 8],
+    ],
+    drums: 'drive',
+    filter: 3400,
+  },
+  tense: {
+    bpm: 136,
+    bars: [
+      { root: 33, chord: [57, 60, 64] },
+      { root: 34, chord: [58, 62, 65] }, // Bb
+      { root: 33, chord: [57, 60, 64] },
+      { root: 40, chord: [56, 59, 64] }, // E
+    ],
+    melody: [],
+    drums: 'tense',
+    filter: 5200,
+  },
+}
 
 export function createMusic(ctx, destination, noiseBuffer) {
   const out = ctx.createGain()
   out.gain.value = 0
   out.connect(destination)
-  // A low-pass over everything keeps it warm and out of the effects' way.
   const tone = ctx.createBiquadFilter()
   tone.type = 'lowpass'
-  tone.frequency.value = 3400
+  tone.frequency.value = 3000
   tone.connect(out)
+  // A soft echo for the melody and pad.
+  const delay = ctx.createDelay(1)
+  delay.delayTime.value = 0.28
+  const fb = ctx.createGain()
+  fb.gain.value = 0.25
+  const wet = ctx.createGain()
+  wet.gain.value = 0.22
+  delay.connect(fb).connect(delay)
+  delay.connect(wet).connect(tone)
 
   let step = 0
   let nextAt = 0
   let timer = null
-  const level = { base: 0.5, ducked: 1, volume: 1 }
+  let mood = MOODS.lobby
+  let wanted = 'lobby'
+  const level = { base: 0.45, ducked: 1, volume: 1 }
 
-  function note(midi, t, { type = 'sine', length = 0.3, volume = 0.05, attack = 0.01, cutoff = 0 } = {}) {
+  function note(midi, t, { type = 'sine', length = 0.3, volume = 0.05, attack = 0.01, cutoff = 0, echo = false, detune = 0 } = {}) {
     const osc = ctx.createOscillator()
     const gain = ctx.createGain()
     osc.type = type
     osc.frequency.value = freq(midi)
+    if (detune) osc.detune.value = detune
     gain.gain.setValueAtTime(0.0001, t)
     gain.gain.exponentialRampToValueAtTime(volume, t + attack)
     gain.gain.exponentialRampToValueAtTime(0.0001, t + length)
+    let last = osc
     if (cutoff) {
       const filter = ctx.createBiquadFilter()
       filter.type = 'lowpass'
       filter.frequency.value = cutoff
-      osc.connect(filter).connect(gain).connect(tone)
-    } else {
-      osc.connect(gain).connect(tone)
+      last = last.connect(filter)
     }
+    last.connect(gain).connect(tone)
+    if (echo) gain.connect(delay)
     osc.start(t)
     osc.stop(t + length + 0.05)
   }
 
-  /** Filtered noise: claps and hats. */
   function hiss(t, { type = 'bandpass', frequency = 1500, q = 0.9, volume = 0.04, length = 0.06 } = {}) {
     const src = ctx.createBufferSource()
     src.buffer = noiseBuffer
@@ -95,60 +125,79 @@ export function createMusic(ctx, destination, noiseBuffer) {
     src.stop(t + length + 0.01)
   }
 
-  /** A stomping kick drum: a sine dropping fast. */
-  function drum(t, volume = 0.16) {
+  function kick(t, volume = 0.16) {
     const osc = ctx.createOscillator()
     const gain = ctx.createGain()
-    osc.frequency.setValueAtTime(150, t)
-    osc.frequency.exponentialRampToValueAtTime(45, t + 0.12)
+    osc.frequency.setValueAtTime(140, t)
+    osc.frequency.exponentialRampToValueAtTime(42, t + 0.13)
     gain.gain.setValueAtTime(volume, t)
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.2)
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.22)
     osc.connect(gain).connect(tone)
     osc.start(t)
-    osc.stop(t + 0.22)
+    osc.stop(t + 0.24)
   }
 
-  /** A handclap: a few bursts a hair apart, like a crowd of hands. */
-  function clap(t) {
-    for (let i = 0; i < 3; i += 1) hiss(t + i * 0.011, { frequency: 1300 + i * 250, volume: 0.035, length: 0.05 + i * 0.02 })
+  function clap(t, volume = 0.035) {
+    for (let i = 0; i < 3; i += 1) hiss(t + i * 0.011, { frequency: 1300 + i * 250, volume, length: 0.05 + i * 0.02 })
   }
 
-  /** Everything that sounds on eighth `step` (of a 4-bar, 32-eighth loop) at time t. */
+  /** Everything on sixteenth `step` (of a 4-bar, 64-sixteenth loop) at time t. */
   function play(t) {
-    const inBar = step % 8
-    const barIndex = Math.floor(step / 8) % BARS.length
-    const bar = BARS[barIndex]
-    // Drums: kick on 1 and 3 (and a double at the end of the loop), claps on 2 and 4,
-    // hats on every off-beat.
-    if (inBar === 0 || inBar === 4 || (barIndex === 3 && inBar === 7)) drum(t)
-    if (inBar === 2 || inBar === 6) clap(t)
-    if (inBar % 2 === 1) hiss(t, { type: 'bandpass', frequency: 5200, q: 1.2, volume: 0.006, length: 0.018 })
-    // Bass: the root, jumping an octave every other eighth.
-    note(bar.root + (inBar % 2 ? 12 : 0), t, { type: 'triangle', length: EIGHTH * 0.9, volume: 0.07 })
-    // Brass: short, bright stabs of the chord.
-    if (STABS.includes(inBar)) {
-      for (const n of bar.chord) note(n, t, { type: 'sawtooth', length: 0.17, volume: 0.011, attack: 0.012, cutoff: 1900 })
+    const m = mood
+    const six = 60 / m.bpm / 4
+    const inBar = step % 16
+    const bar = m.bars[Math.floor(step / 16) % 4]
+
+    if (m.drums === 'soft') {
+      if (inBar === 0 || inBar === 10) kick(t, 0.11)
+      if (inBar === 8) clap(t, 0.022)
+      if (inBar % 4 === 2) hiss(t, { frequency: 6500, q: 1.5, volume: 0.007, length: 0.03 })
+      // Bass on the beat, a pad chord at the top of each bar.
+      if (inBar % 8 === 0) note(bar.root, t, { type: 'triangle', length: six * 7, volume: 0.07 })
+      if (inBar === 0) {
+        for (const n of bar.chord) {
+          note(n, t, { type: 'triangle', length: six * 15, volume: 0.012, attack: 0.25, echo: true, detune: -6 })
+          note(n, t, { type: 'sine', length: six * 15, volume: 0.012, attack: 0.3, detune: 7 })
+        }
+      }
+    } else {
+      // Four on the floor, claps on 2 and 4, hats on the off-beats.
+      if (inBar % 4 === 0) kick(t, 0.15)
+      if (inBar === 4 || inBar === 12) clap(t, 0.04)
+      if (inBar % 4 === 2) hiss(t, { frequency: 7000, q: 1.2, volume: 0.012, length: 0.025 })
+      if (m.drums === 'tense' && inBar % 2 === 1) hiss(t, { frequency: 9000, q: 2, volume: 0.006, length: 0.015 })
+      // Pulsing bass eighths.
+      if (inBar % 2 === 0) note(bar.root + (inBar % 8 === 6 ? 12 : 0), t, { type: 'sawtooth', length: six * 1.6, volume: 0.05, cutoff: m.drums === 'tense' ? 900 : 600 })
+      // Arpeggio up the chord: eighths, or sixteenths when tense.
+      const every = m.drums === 'tense' ? 1 : 2
+      if (inBar % every === 0) {
+        const n = bar.chord[(step / every) % 3 | 0] + 12
+        note(n, t, { type: 'square', length: six * 0.9, volume: 0.01, cutoff: m.filter, echo: true })
+      }
     }
-    // The hook, on a soft square lead (every other time round, so it doesn't nag).
-    if (Math.floor(step / 32) % 2 === 0) {
-      for (const [at, midi, length] of HOOK) {
-        if (at === step % 32) note(midi, t, { type: 'square', length: EIGHTH * length * 0.9, volume: 0.014, attack: 0.02, cutoff: 2200 })
+    // The melody, every other time round so it doesn't nag.
+    if (m.melody.length && Math.floor(step / 64) % 2 === 0) {
+      for (const [at, midi, length] of m.melody) {
+        if (at === step % 64) note(midi, t, { type: m.drums === 'soft' ? 'triangle' : 'square', length: six * length * 0.95, volume: m.drums === 'soft' ? 0.03 : 0.014, attack: 0.015, cutoff: m.filter, echo: true })
       }
     }
   }
 
   function schedule() {
-    // After the page was hidden (the context suspended), pick up from now.
     nextAt = Math.max(nextAt, ctx.currentTime + 0.05)
     while (nextAt < ctx.currentTime + LOOKAHEAD_S) {
+      // Change mood on a bar line.
+      if (step % 16 === 0 && MOODS[wanted] !== mood) {
+        mood = MOODS[wanted]
+        tone.frequency.setTargetAtTime(mood.filter, nextAt, 0.5)
+      }
       play(nextAt)
-      nextAt += EIGHTH
-      step = (step + 1) % 64
+      nextAt += 60 / mood.bpm / 4
+      step = (step + 1) % 128
     }
   }
 
-  const applyLevel = (seconds) =>
-    out.gain.setTargetAtTime(level.base * level.ducked * level.volume, ctx.currentTime, seconds)
+  const applyLevel = (seconds) => out.gain.setTargetAtTime(level.base * level.ducked * level.volume, ctx.currentTime, seconds)
 
   return {
     start() {
@@ -156,18 +205,18 @@ export function createMusic(ctx, destination, noiseBuffer) {
       nextAt = ctx.currentTime + 0.1
       timer = setInterval(schedule, TICK_MS)
       schedule()
-      // Fade in.
       applyLevel(1.2)
     },
-    /** Quieter while something else should be heard (the rush of a flying ball). */
+    /** 'lobby' | 'match' | 'tense' - takes effect on the next bar. */
+    setMood(name) {
+      if (MOODS[name]) wanted = name
+    },
     duck(on) {
       level.ducked = on ? 0.45 : 1
       applyLevel(0.4)
     },
-    /** The player's music volume, 0..1 (Boxity's music_volume setting). */
     setVolume(volume) {
       level.volume = Math.min(1, Math.max(0, Number(volume) || 0))
-      // Before start() the fade-in will pick it up.
       if (timer) applyLevel(0.15)
     },
   }

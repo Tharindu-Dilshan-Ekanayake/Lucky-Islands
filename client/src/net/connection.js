@@ -1,19 +1,16 @@
-import { reportedAnim } from '../bloxity/emotes'
 import { environment } from '../bloxity/env'
 import { GAME_SLUG, joinToken } from '../bloxity/identity'
 import { getSDK, safeCall, waitForSDK } from '../bloxity/sdk'
-import { LAUNCH_STAND } from '@shared/world'
 
-import { meterAtZ } from '../game/roll/path'
 import { runtime } from '../game/runtime'
 import { getGame } from '../store/game'
-import { setTransport } from './actions'
+import { send, setTransport } from './actions'
 import { handleServerEvent } from './events'
 import { createLocalServer } from './localServer'
-import { clearRemotePlayers, removeRemotePlayer, upsertRemotePlayer } from './remotePlayers'
+import { clearRemotes } from './remotes'
 
-/** Position reports per second (the server validates each against the last). */
-const POSITION_HZ = 10
+/** Position reports per second (the host checks each against the last). */
+const POSITION_HZ = 15
 const JOIN_RETRIES = 4
 const RETRY_DELAY_MS = 4000
 /** Server code for "you joined from another window". */
@@ -64,33 +61,30 @@ async function findDevServer() {
   for (const port of DEV_PORTS) candidates.push(`${window.location.protocol}//${window.location.hostname}:${port}`)
   for (const url of new Set(candidates)) {
     const health = await healthOf(url)
-    if (health?.ok && health.game === '1-arm-length') return url
+    if (health?.ok && health.game === 'lucky-sky-brawl') return url
   }
   return null
 }
 
 let active = null
 let generation = 0
+/** What our Bloxity avatar wears, as last shared; sent again on every (re)join. */
+let localLook = null
+
+/** Tells the authority what our avatar wears, so other players see us dressed the same. */
+export function shareLook(equipped, proportions) {
+  localLook = { equipped: equipped || {}, proportions: proportions || {} }
+  send('look', localLook)
+}
+const resendLook = () => {
+  if (localLook) send('look', localLook)
+}
 let lastIdentity = null
 /**
  * The room we are in (or were last in): `{ endpoint, roomId }`. Signing in mid-game
  * rejoins exactly this room instead of matchmaking somewhere else.
  */
 let lastRoom = null
-/** What our avatar wears, as last shared; sent again on every join. */
-let localLook = null
-/** Sends `look` to the room now, if there is one. */
-let sendLook = () => {}
-
-/**
- * Shares what our Bloxity avatar wears so other players can dress our character the
- * same. Kept and re-sent on every (re)join.
- */
-export function shareLook(equipped, proportions) {
-  localLook = { equipped: equipped || {}, proportions: proportions || {} }
-  sendLook()
-}
-
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 
 /** Calls `Legion.SDK.game[method](...args)` if the SDK is there; never throws. */
@@ -117,10 +111,41 @@ async function healthOf(url) {
   }
 }
 
+/**
+ * ~15 Hz position reports to whichever authority we have, skipped while standing still
+ * (but at least once a second). Returns the stop function.
+ */
+function startPositionReports() {
+  let last = { x: NaN, y: NaN, z: NaN, yaw: NaN, pitch: NaN, a: -1 }
+  let lastSentAt = 0
+  const id = setInterval(() => {
+    const p = runtime.player
+    const b = p.body
+    const now = performance.now()
+    const moved =
+      Math.abs(b.x - last.x) + Math.abs(b.y - last.y) + Math.abs(b.z - last.z) > 0.02 ||
+      Math.abs(p.yaw - last.yaw) + Math.abs(p.pitch - last.pitch) > 0.02 ||
+      p.anim !== last.a
+    if (!moved && now - lastSentAt < 1000) return
+    last = { x: b.x, y: b.y, z: b.z, yaw: p.yaw, pitch: p.pitch, a: p.anim }
+    lastSentAt = now
+    send('pos', { x: +b.x.toFixed(3), y: +b.y.toFixed(3), z: +b.z.toFixed(3), yaw: +p.yaw.toFixed(3), pitch: +p.pitch.toFixed(3), a: p.anim })
+  }, 1000 / POSITION_HZ)
+  return () => clearInterval(id)
+}
+
 function startLocal(identity, message) {
   const local = createLocalServer({ ...identity, onEvent: handleServerEvent })
-  active = { kind: 'local', close: () => local.close() }
   setTransport(local)
+  resendLook()
+  const stopReports = startPositionReports()
+  active = {
+    kind: 'local',
+    close: () => {
+      stopReports()
+      local.close()
+    },
+  }
   // Not in a joinable room: friends can't be sent here.
   sdkGame('updateRoom', '')
   getGame().setNet({ mode: 'offline', players: 1, lobbyId: null, code: null, isPrivate: false, message })
@@ -216,32 +241,6 @@ function attachRoom(room, identity, Callbacks, endpoint, gen) {
 
   room.onMessage('*', (type, payload) => {
     switch (type) {
-      case 'spawn':
-        runtime.player.position.set(payload.x, 0, payload.z)
-        break
-      case 'correct':
-        runtime.player.position.set(payload.x, payload.y, payload.z)
-        break
-      case 'stock':
-        getGame().setSphinxStock(payload.sphinx)
-        break
-      case 'leaderboards':
-        getGame().setLeaderboards(payload)
-        break
-      case 'ghostRoll':
-        // Never your own launch (you're flying already), and only launches down your
-        // world's runway. Their avatar replays it (remote/): from the launch posts, as far
-        // back as they'd walked.
-        if (payload.sid === room.sessionId) break
-        if ((payload.world || 0) !== (getGame().profile.world || 0)) break
-        runtime.ghostRolls.set(payload.sid, {
-          ...payload,
-          fromMeter: meterAtZ(LAUNCH_STAND.z),
-          startX: LAUNCH_STAND.x,
-          pull: Math.max(0, payload.z - LAUNCH_STAND.z),
-          startedAt: performance.now(),
-        })
-        break
       case 'kicked':
         leaving = true
         replaced = true
@@ -252,54 +251,27 @@ function attachRoom(room, identity, Callbacks, endpoint, gen) {
   })
 
   callbacks.onAdd('players', (player, sessionId) => {
-    if (sessionId !== room.sessionId) {
-      upsertRemotePlayer(sessionId, player)
-      callbacks.onChange(player, () => upsertRemotePlayer(sessionId, player))
-      // Boxity toasts these only when that player is one of your friends.
-      if (player.name) sdkGame(stateSeen ? 'playerJoined' : 'playerInRoom', player.name)
-    }
+    // Boxity toasts these only when that player is one of your friends.
+    if (sessionId !== room.sessionId && player.name) sdkGame(stateSeen ? 'playerJoined' : 'playerInRoom', player.name)
     syncLobby()
   })
-  callbacks.onRemove('players', (_player, sessionId) => {
-    removeRemotePlayer(sessionId)
-    syncLobby()
-  })
+  callbacks.onRemove('players', () => syncLobby())
   callbacks.listen('isPrivate', syncLobby)
   room.onStateChange(() => {
     stateSeen = true
   })
 
-  sendLook = () => {
-    if (localLook) room.send('look', localLook)
-  }
-  sendLook()
-
-  // ~10 Hz position reports, skipped while standing still and doing nothing new.
-  let last = { x: NaN, y: NaN, z: NaN, a: '' }
-  let lastSentAt = 0
-  const posId = setInterval(() => {
-    const p = runtime.player.position
-    // A Boxity emote plays as anim 'emote:<id>' (see bloxity/emotes.js).
-    const a = reportedAnim(runtime.player.anim)
-    runtime.player.anim = a
-    const now = performance.now()
-    const moved = Math.abs(p.x - last.x) + Math.abs(p.y - last.y) + Math.abs(p.z - last.z) > 0.03
-    if (!moved && a === last.a && now - lastSentAt < 1000) return
-    last = { x: p.x, y: p.y, z: p.z, a }
-    lastSentAt = now
-    room.send('pos', { x: p.x, y: p.y, z: p.z, r: runtime.player.yaw, a })
-  }, 1000 / POSITION_HZ)
+  const stopReports = startPositionReports()
 
   room.onDrop(() => getGame().setNet({ mode: 'connecting', message: 'Reconnecting…' }))
   room.onReconnect(syncLobby)
   room.onLeave((code) => {
     window.removeEventListener('pagehide', onPageHide)
-    clearInterval(posId)
+    stopReports()
     // The leave can land after a newer connection has started (a rejoin after signing
     // in, a lobby switch): that one owns the game's state now.
     if (gen !== generation) return
-    sendLook = () => {}
-    clearRemotePlayers()
+    clearRemotes()
     sdkGame('updateRoom', '')
     if (replaced || code === DUPLICATE_LOGIN) {
       getGame().setNet({ mode: 'replaced', message: 'Playing in another window' })
@@ -322,12 +294,13 @@ function attachRoom(room, identity, Callbacks, endpoint, gen) {
     room,
     close: () => {
       leaving = true
-      clearInterval(posId)
-      clearRemotePlayers()
+      stopReports()
+      clearRemotes()
       room.leave(true)
     },
   }
   setTransport({ send: (type, payload) => room.send(type, payload) })
+  resendLook()
   syncLobby()
 }
 

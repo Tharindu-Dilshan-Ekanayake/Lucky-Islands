@@ -1,97 +1,115 @@
 import { create } from 'zustand'
 
-import { SPHINX_STOCK_DEFAULT } from '@shared/balance'
 import { createProfile, createSession } from '@shared/logic'
 
 /**
- * Everything the UI renders from. Written by the network layer (profile, events) and
- * the 10 Hz game ticker (zones, timers) - never from a frame loop.
- *
- * Components must select narrowly (`useGame((s) => s.profile.wins)`), so a Health tick
- * re-renders the Health label and nothing else.
+ * Everything the UI renders from. Written by the network layer and a few slow timers -
+ * never from a frame loop. Components select narrowly (`useGame((s) => s.me.hp)`).
  */
 
+const SETTINGS_KEY = 'lsb.settings'
+const DEFAULT_SETTINGS = { sensitivity: 1, fov: 75, invertY: false, camera: 'first', showFps: false }
+
+function readSettings() {
+  try {
+    return { ...DEFAULT_SETTINGS, ...(JSON.parse(localStorage.getItem(SETTINGS_KEY) || 'null') || {}) }
+  } catch {
+    return { ...DEFAULT_SETTINGS }
+  }
+}
+
+let toastId = 0
 
 export const useGame = create((set, get) => ({
-  /** Authoritative copy of the player's save, as last sent by the server. */
   profile: createProfile('local', 'Player'),
-  /** Per-connection state: session start, claimed playtime rewards. */
   session: createSession(Date.now()),
-  /** True once the first real profile has arrived. */
   profileLoaded: false,
-  /** True once the game is on screen; non-essential start-up work waits for it. */
   playable: false,
 
-  net: {
-    /** 'connecting' | 'online' | 'offline' */
-    mode: 'connecting',
-    lobbyId: null,
-    /** Short code friends join with, for private lobbies. */
-    code: null,
-    isPrivate: false,
-    players: 1,
-    maxPlayers: 8,
-    message: null,
-  },
-  sphinxStock: SPHINX_STOCK_DEFAULT,
+  net: { mode: 'connecting', lobbyId: null, code: null, isPrivate: false, players: 1, maxPlayers: 8, message: null },
   leaderboards: null,
 
-  /** Where the player is standing, from the ticker. */
-  zone: { pad: -1, padNear: -1, rollZone: false, atPosts: false, stand: -1, egg: null, portal: null, freeReward: false, sphinx: false },
-
-  /** Which modal panel is open: 'rebirth' | 'daily' | 'pets' | 'items' | 'store' | ... */
+  /** The round: phase, when it ends (performance.now() time), mode, votes. */
+  phase: { phase: 'waiting', endsAt: 0, mode: null, map: null, alive: 0, fighters: 0, votes: {}, myVote: null, afk: false, waitingFor: 0 },
+  /** 'lobby' | 'match' | 'spec' */
+  zone: 'lobby',
+  /** Our health, hotbar and effects in a round. */
+  me: { hp: 20, maxHp: 20, inv: [], sel: 0, effects: {}, alive: false, kills: 0 },
+  /** eid -> { eid, name, bot, cape, sword, zone, alive, kills } */
+  roster: {},
+  /** Kill feed, newest first: { id, k, v, how }. */
+  feed: [],
+  toasts: [],
+  /** Your last elimination: { name, streak, cash, id }. */
+  killBanner: null,
+  /** The last lucky block result: { text, items, rare, bad, id }. */
+  loot: null,
+  /** End of your round: { kind: 'dead' | 'win' | 'lost', by, placement, reward }. */
+  result: null,
+  /** Round cash just earned, shown on the result card. */
+  roundReward: null,
+  /** A case being opened: { caseId, id, kind, duplicate, refund, gift }. */
+  caseOpen: null,
+  /** The lobby station in reach: 'case:cape' | 'case:sword' | null. */
+  prompt: null,
+  /** First-round tutorial step: 0 break a lucky block, 1 select blocks, 2 bridge to the middle, 3 done. */
+  tutorial: 0,
+  pointerLocked: false,
   panel: null,
-  /** Extra data for the open panel (e.g. which egg the hatch panel is for). */
   panelData: null,
+  settings: readSettings(),
+  /** Spectating whom (name), for the bar. */
+  spectating: null,
 
-  /** A roll in progress: { distance, wins, prize, blocked, duration, best }. */
-  roll: null,
-  /** Wins earned by the current roll, held back from the HUD until the tire stops. */
-  pendingWins: 0,
-  /** "+N Wins!" result once the tire has stopped. */
-  rollResult: null,
-  /** A short celebration banner: { text, id } (new zone, ad reward, Gems purchase). */
-  toast: null,
-  /** Active hatch animation: { eggId, pets }. */
-  hatch: null,
-  /** Keep hatching the egg you're standing at (the T button). Client-side only. */
-  autoHatch: false,
-
-
-  // --- Actions -----------------------------------------------------------------
-
-  setProfile: (profile, session) =>
-    set((s) => ({ profile, session: session || s.session, profileLoaded: true })),
-  patchProfile: (patch) => set((s) => ({ profile: { ...s.profile, ...patch } })),
+  setProfile: (profile, session) => set((s) => ({ profile, session: session || s.session, profileLoaded: true })),
   setNet: (patch) => set((s) => ({ net: { ...s.net, ...patch } })),
-  setZone: (zone) => set({ zone }),
   setPlayable: () => set({ playable: true }),
-  setSphinxStock: (sphinxStock) => set({ sphinxStock }),
   setLeaderboards: (leaderboards) => set({ leaderboards }),
+  setPhase: (phase) => set({ phase }),
+  setZone: (zone) => set({ zone }),
+  setMe: (me) => set({ me }),
+  setRoster: (roster) => set({ roster }),
+  setPrompt: (prompt) => {
+    if (get().prompt !== prompt) set({ prompt })
+  },
+  setPointerLocked: (pointerLocked) => set({ pointerLocked }),
+  setTutorial: (tutorial) => {
+    if (tutorial > get().tutorial) set({ tutorial })
+  },
+  setSpectating: (spectating) => {
+    if (get().spectating !== spectating) set({ spectating })
+  },
+  setSetting: (key, value) => {
+    const settings = { ...get().settings, [key]: value }
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings))
+    } catch {
+      // Not persisted.
+    }
+    set({ settings })
+  },
+
+  addFeed: (entry) => set((s) => ({ feed: [{ ...entry, id: ++toastId, at: Date.now() }, ...s.feed].slice(0, 5) })),
+  pruneFeed: () => {
+    const now = Date.now()
+    const feed = get().feed.filter((f) => now - f.at < 7000)
+    if (feed.length !== get().feed.length) set({ feed })
+  },
+  /** kind: 'info' | 'success' | 'error' | 'kill' */
+  showToast: (text, kind = 'info') => {
+    const id = ++toastId
+    set((s) => ({ toasts: [...s.toasts.slice(-2), { id, text, kind }] }))
+    setTimeout(() => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })), 3200)
+  },
+  setKillBanner: (killBanner) => set({ killBanner: killBanner ? { ...killBanner, id: ++toastId } : null }),
+  setLoot: (loot) => set({ loot: loot ? { ...loot, id: ++toastId } : null }),
+  setResult: (result) => set({ result }),
+  setRoundReward: (roundReward) => set({ roundReward }),
+  setCaseOpen: (caseOpen) => set({ caseOpen }),
 
   openPanel: (panel, panelData = null) => set({ panel, panelData }),
   closePanel: () => set({ panel: null, panelData: null }),
   togglePanel: (panel) => set((s) => (s.panel === panel ? { panel: null, panelData: null } : { panel, panelData: null })),
-
-  /** kind: 'info' | 'error' | 'success' | 'badge' */
-
-  // A lucky gift's Wins wait for the landing too.
-  startRoll: (roll) => set({ roll, pendingWins: roll.wins + roll.prize + (roll.giftWins || 0) }),
-  endRoll: () => {
-    const { roll } = get()
-    set({
-      roll: null,
-      pendingWins: 0,
-      rollResult: roll
-        ? { wins: roll.wins, prize: roll.prize, distance: roll.distance, blocked: roll.blocked, best: roll.best, id: Date.now() }
-        : null,
-    })
-  },
-  clearRollResult: () => set({ rollResult: null }),
-  showToast: (text) => set({ toast: { text, id: Date.now() } }),
-
-  setHatch: (hatch) => set({ hatch }),
-  setAutoHatch: (autoHatch) => set({ autoHatch }),
 }))
 
 /** Non-reactive snapshot for timers and non-React code. */

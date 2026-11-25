@@ -55,6 +55,8 @@ export default defineConfig({
       '@shared': fileURLToPath(new URL('../shared', import.meta.url)),
     },
   },
+  // The offline host runs in a module worker (net/hostWorker.js) importing ../shared.
+  worker: { format: 'es' },
   server: {
     // ../shared lives outside the client root.
     fs: { allow: ['..'] },

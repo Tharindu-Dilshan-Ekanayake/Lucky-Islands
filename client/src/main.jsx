@@ -1,4 +1,7 @@
-import '@fontsource/fredoka-one/latin-400.css'
+import '@fontsource/fredoka/latin-500.css'
+import '@fontsource/fredoka/latin-600.css'
+import '@fontsource/fredoka/latin-700.css'
+import '@fontsource/silkscreen/latin-700.css'
 
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
@@ -16,10 +19,19 @@ import './index.css'
 performance.mark('pp:main')
 installDebugHooks()
 installAudioUnlock()
-// Every chunky button clicks.
+// Every button clicks, and ticks softly under the mouse.
 window.addEventListener('pointerdown', (e) => {
-  if (e.target instanceof Element && e.target.closest('.pp-btn')) sfx.click()
+  if (e.target instanceof Element && e.target.closest('.mc-btn')) sfx.click()
 })
+let hovered = null
+window.addEventListener('pointerover', (e) => {
+  const btn = e.target instanceof Element ? e.target.closest('.mc-btn') : null
+  if (btn && btn !== hovered && e.pointerType === 'mouse') sfx.hover()
+  hovered = btn
+})
+// Canvas text (labels, the leaderboard) uses the pixel font: start loading it now.
+document.fonts?.load("700 20px 'Silkscreen'").catch(() => {})
+document.fonts?.load("600 20px 'Fredoka'").catch(() => {})
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

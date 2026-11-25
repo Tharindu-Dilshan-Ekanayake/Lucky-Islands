@@ -1,19 +1,27 @@
 ---
-canDie: false
+canDie: true
 hasScore: true
 ---
 
-# +1 Arm Length: Boxity integration
+# Lucky Sky Brawl: Boxity integration
 
-The player cannot die: there is no death or game-over screen. You do rubber-arm pull-ups
-for Power, grab the two launch posts on the Launch Pad, walk back with your own controls
-while your arms stretch like rubber, and let go to fly down the rainbow runway: more Power
-flies you further, and the stretch meter (let go at the top of the twang for PERFECT) adds
-up to x1.6 Wins. You always get another launch. Your arms (24 kinds, bought with Wins)
-change how your Bloxity avatar's arms look and how much Power each gain is worth.
+A block-world battle royale on floating islands. Everyone starts in a glass cage above
+their own island; when the cages open you break your Lucky Blocks for random items
+(swords, bows, potions, TNT, warp pearls, blocks - or an unlucky surprise), build a
+bridge to the middle island where the Mega Lucky Blocks are, and fight. The lava sea
+below rises through the round. Last one standing wins. Empty islands are filled with
+bots (unless the room votes for no bots), so a round has up to 8 fighters. Between
+rounds the room votes in two steps: first the mode (Solo free-for-all, 4 Teams 2v2v2v2,
+3 Teams 3v3v2, 2 Teams 4v4, Max Luck, Lava Rush) with the bots (none / Easy / Normal /
+Hard), then the map (with a picture of each) - and the round starts. Each step ends as
+soon as everyone has voted. Players who arrive mid-round can spectate or join it,
+taking over a bot (or a free island). In team modes players are dealt evenly across the
+teams; there is no friendly fire and the whole winning team wins. "Bots only" opens a
+private room of your own. Cases unlock capes and sword skins with the cash you earn.
 
-Built on the +1 Tire Rolling template: inside the code the old names stay (`health` is
-Power, a `tire` is a pair of arms, a `pad` is a pull-up bar, a `roll` is a launch).
+The game runs in `shared/host.js` (rounds, rules, bots), the same code in the Colyseus
+room (`server/src/rooms/GameRoom.js`) and in the offline stand-in in the browser
+(`client/src/net/localServer.js`). Player saves are `shared/logic.js` profiles.
 
 ## Leaderboards
 
@@ -22,12 +30,12 @@ Scores are reported by the **game server**, never by the client
 player leaves, each pod sends the changed scores of its verified players to
 `POST {api}/v1/leaderboards/hosted/{BLOXITY_GAME_ID}/report` as `legion_<userId>`.
 
-| Board      | Label            | Score                                | Format  |
-|------------|------------------|--------------------------------------|---------|
-| `rebirths` | Rebirths         | `profile.rebirths`                   | number  |
-| `wins`     | Total Wins       | `profile.stats.totalWins`            | compact |
-| `distance` | Longest Flight (m) | `floor(profile.stats.bestDistance)`  | compact |
-| `playtime` | Minutes Played   | `floor(profile.stats.playtime / 60)` | number  |
+| Board      | Label          | Score                                | Format |
+|------------|----------------|--------------------------------------|--------|
+| `wins`     | Wins           | `profile.wins`                       | number |
+| `kills`    | Kills          | `profile.kills`                      | number |
+| `games`    | Rounds Played  | `profile.games`                      | number |
+| `playtime` | Minutes Played | `floor(profile.stats.playtime / 60)` | number |
 
 All four are `order: desc`, `mode: best`, `reset: none`.
 
@@ -37,10 +45,18 @@ Boxity's purchase webhook goes to `POST /api/gems/webhook` on the game server. I
 recorded in the database by `transactionId` (idempotent) and applied exactly once by
 the pod the buyer plays on. Unknown skus are answered 400 so Boxity refunds them.
 
+| Sku          | Grant                                          |
+|--------------|------------------------------------------------|
+| `cash_small` | +1,500 cash                                    |
+| `cash_big`   | +8,000 cash                                    |
+| `vip`        | x2 cash from every round (permanent)           |
+| `starter`    | Flame Cape + Inferno sword skin + 1,000 cash   |
+
 ## Rewarded ads
 
 The client sends `adReward { placement, rewardToken }`; the server verifies the token
-with `POST {api}/v1/ads/reward/verify` before granting anything.
+with `POST {api}/v1/ads/reward/verify` before granting anything. Placement:
+`free-cash` (+150 cash, 3 min cooldown).
 
 ## Open Rooms
 
@@ -51,13 +67,17 @@ normal matchmaking if that room is gone or full.
 
 ## Avatars
 
-`client/src/game/PlayerAvatar.jsx` + `avatarRig.js` draw every slot: skin (with face,
-shirt and pants), body parts, hat + hair + mask on `Neck1`, back on `Spine2`, neck/chest
-on `Spine2` and waist on `Spine1` (rest-inverse placement), hands and shoes as mirrored
-pairs following the leaf bones' position and rotation only. A player wearing an uploaded
-character (`characterId`) gets its GLB via `avatar.getCharacter()` / `getCharacterFor()`,
-with accessories fitted by `characterAccessoryMatrix`; on any failure the regular avatar
-shows. Body proportions are applied by moving bones, so accessories follow them.
+Everyone plays as their Bloxity avatar (`client/src/game/avatar/`): the base
+`player.glb` rig with the player's skin (shirt, pants and face composited by Boxity),
+body parts, hats / hair / masks / back items / accessories, body proportions, or their
+own uploaded character (`characterId`). The client sends `look { equipped, proportions }`
+when it joins and whenever the outfit changes; the host cleans it (small objects of short
+strings and numbers) and shares it in the roster, so every client dresses everyone the
+same. Bots wear the base body. Each avatar is posed in code for walking, sprinting,
+sneaking, jumping, sword swings and looking up and down, carries the held item in its
+right hand and the equipped cape on its back. Until an avatar has loaded (or if its
+assets fail), a blocky stand-in is drawn. The nearest 4 / 10 / 12 characters (LOW /
+MEDIUM / HIGH) are avatars; anyone further away is a blocky figure.
 
 ## Server environment
 
