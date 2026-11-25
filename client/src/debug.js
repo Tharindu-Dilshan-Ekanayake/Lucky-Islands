@@ -1,3 +1,4 @@
+import { avatarShown } from './game/avatar/state'
 import { runtime } from './game/runtime'
 import { enterMatch, worldState } from './game/world'
 import { actions, send } from './net/actions'
@@ -11,5 +12,5 @@ import { useQuality } from './store/quality'
 export function installDebugHooks() {
   if (typeof window === 'undefined') return
   if (!new URLSearchParams(window.location.search).has('debug')) return
-  window.__pp = { runtime, worldState, enterMatch, useGame, useQuality, actions, send }
+  window.__pp = { runtime, worldState, enterMatch, useGame, useQuality, actions, send, avatarShown }
 }

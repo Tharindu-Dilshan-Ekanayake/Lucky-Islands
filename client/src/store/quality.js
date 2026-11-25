@@ -28,13 +28,13 @@ export const PRESETS = {
     remoteDrawDistance: 110,
     /**
      * Characters drawn as their Bloxity avatar (you included; real players first, then
-     * the nearest); the rest blocky. On LOW every real player in the room (8 max) gets
-     * one, and bots stay blocky.
+     * the nearest); the rest blocky. A round has at most 8 fighters, so even on LOW
+     * everyone you can see is their avatar, near or far.
      */
     avatarCount: 8,
-    botAvatars: false,
-    /** No avatar beyond this (blocks): too small to tell apart anyway. */
-    avatarDistance: 40,
+    botAvatars: true,
+    /** No avatar beyond this (blocks): as far as other players are drawn at all. */
+    avatarDistance: 110,
     remoteNameDistance: 30,
     labelDistance: 50,
   },
@@ -51,7 +51,7 @@ export const PRESETS = {
     remoteDrawDistance: 150,
     avatarCount: 10,
     botAvatars: true,
-    avatarDistance: 70,
+    avatarDistance: 150,
     remoteNameDistance: 45,
     labelDistance: 70,
   },
@@ -68,7 +68,7 @@ export const PRESETS = {
     remoteDrawDistance: 200,
     avatarCount: 12,
     botAvatars: true,
-    avatarDistance: 100,
+    avatarDistance: 200,
     remoteNameDistance: 60,
     labelDistance: 90,
   },
