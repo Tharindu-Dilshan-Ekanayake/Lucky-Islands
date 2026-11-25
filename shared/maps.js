@@ -62,6 +62,30 @@ export const MAPS = {
     deco: [B.TALL_GRASS],
     sky: ['#ffbf73', '#fff1d6'],
   },
+  castle: {
+    name: 'Sky Castle',
+    top: B.GRASS,
+    fill: B.DIRT,
+    deep: B.STONE_BRICKS,
+    speck: B.DARKSTONE,
+    trunk: B.LOG,
+    crown: B.LEAVES,
+    deco: [B.FLOWER_YELLOW, B.TALL_GRASS, B.TALL_GRASS],
+    sky: ['#7a6bd8', '#ffc9a8'],
+  },
+  ember: {
+    name: 'Ember Isles',
+    top: B.DARKSTONE,
+    fill: B.STONE,
+    deep: B.STONE,
+    speck: B.GOLD,
+    trunk: B.LOG,
+    crown: null,
+    deco: [B.LAMP],
+    sky: ['#5a1c2e', '#ff8a4a'],
+    /** Ember's dead trees: bare trunks; its "flowers" are glowing lamps, rarely. */
+    decoChance: 0.03,
+  },
 }
 export const MAP_IDS = Object.keys(MAPS)
 
@@ -104,6 +128,14 @@ function island(world, rng, map, cx, cz, radius, top, depth = 9) {
 }
 
 function tree(world, map, x, y, z, rng) {
+  if (!map.crown && map.trunk === B.LOG) {
+    // A dead tree: a crooked trunk with a stub of a branch.
+    const h = 3 + Math.floor(rng() * 2)
+    for (let i = 0; i < h; i += 1) world.set(x, y + i, z, B.LOG)
+    const [dx, dz] = [[1, 0], [-1, 0], [0, 1], [0, -1]][Math.floor(rng() * 4)]
+    world.set(x + dx, y + h - 1, z + dz, B.LOG)
+    return
+  }
   if (map.trunk === B.CACTUS) {
     const h = 2 + Math.floor(rng() * 2)
     for (let i = 0; i < h; i += 1) world.set(x, y + i, z, B.CACTUS)
@@ -146,6 +178,57 @@ function landmark(world, mapId, cx, top, cz) {
       for (const [dx, dz] of [[-6, -6], [6, -6], [-6, 6], [6, 6]]) fill(cx + dx, y0, cz + dz, cx + dx, y0 + 5, cz + dz, B.CANDY_STRIPE)
     }
     return { x: cx, y, z: cz }
+  }
+  if (mapId === 'castle') {
+    // A keep with four corner towers, battlements, and a gate on each side.
+    const wall = (x, y, z) => world.set(x, y, z, (x + y + z) % 5 === 0 ? B.DARKSTONE : B.STONE_BRICKS)
+    for (let y = y0; y < y0 + 5; y += 1) {
+      for (let x = cx - 4; x <= cx + 4; x += 1) {
+        for (let z = cz - 4; z <= cz + 4; z += 1) {
+          const edge = Math.abs(x - cx) === 4 || Math.abs(z - cz) === 4
+          const gate = (x === cx || z === cz) && y < y0 + 2
+          if (edge && !gate) wall(x, y, z)
+        }
+      }
+    }
+    fill(cx - 4, y0 + 5, cz - 4, cx + 4, y0 + 5, cz + 4, B.PLANKS)
+    for (let x = cx - 4; x <= cx + 4; x += 1) {
+      for (let z = cz - 4; z <= cz + 4; z += 1) {
+        if ((Math.abs(x - cx) === 4 || Math.abs(z - cz) === 4) && (x + z) % 2 === 0) wall(x, y0 + 6, z)
+      }
+    }
+    for (const [dx, dz] of [[-4, -4], [4, -4], [-4, 4], [4, 4]]) {
+      fill(cx + dx - 1, y0, cz + dz - 1, cx + dx + 1, y0 + 7, cz + dz + 1, B.STONE_BRICKS)
+      world.set(cx + dx, y0 + 8, cz + dz, B.WOOL_BLUE)
+      world.set(cx + dx, y0 + 9, cz + dz, B.WOOL_BLUE)
+      world.set(cx + dx, y0 + 7, cz + dz, B.LAMP)
+    }
+    // Stairs up to the roof inside.
+    for (let i = 0; i < 5; i += 1) world.set(cx - 3 + i, y0 + i, cz + 3, B.PLANKS)
+    world.set(cx, y0, cz, B.LAMP)
+    return { x: cx, y: y0 + 6, z: cz }
+  }
+  if (mapId === 'ember') {
+    // A small volcano: a stepped dark cone with glowing gold seams and a lit crater.
+    let y = y0
+    for (let r = 6; r >= 2; r -= 1) {
+      for (let layer = 0; layer < 2; layer += 1) {
+        for (let x = cx - r; x <= cx + r; x += 1) {
+          for (let z = cz - r; z <= cz + r; z += 1) {
+            const d = Math.hypot(x - cx, z - cz)
+            if (d > r + 0.4) continue
+            // Glowing seams run down the outside; the crater at the top is hollow and lit.
+            const seam = d > r - 0.8 && ((Math.round(Math.atan2(z - cz, x - cx) * 3) + 12) % 4 === 0)
+            const crater = r === 2 && d < 1.5
+            world.set(x, y, z, crater ? (layer === 0 ? B.LAMP : B.AIR) : seam ? B.GOLD : r % 2 ? B.DARKSTONE : B.STONE)
+          }
+        }
+        y += 1
+      }
+    }
+    for (const [dx, dz] of [[-6, 0], [6, 0], [0, -6], [0, 6]]) world.set(cx + dx, y0, cz + dz, B.LAMP)
+    // The Mega block sits on the crater's rim.
+    return { x: cx + 2, y, z: cz }
   }
   if (mapId === 'frost') {
     // An ice tower with a lookout on top.
@@ -239,7 +322,7 @@ export function generateMatch(mapId, seed, modeId = 'classic') {
       avoid.push(back.c)
     }
     for (const c of freeTops(world, cells, avoid, ISLAND_TOP)) {
-      if (rng() < 0.12) world.set(c.x, ISLAND_TOP + 1, c.z, map.deco[Math.floor(rng() * map.deco.length)])
+      if (rng() < (map.decoChance ?? 0.12)) world.set(c.x, ISLAND_TOP + 1, c.z, map.deco[Math.floor(rng() * map.deco.length)])
     }
   }
 
@@ -272,7 +355,7 @@ export function generateMatch(mapId, seed, modeId = 'classic') {
   const midFree = freeTops(world, midCells, lucky, midTop).filter((c) => Math.hypot(c.x - CENTER.x, c.z - CENTER.z) > 6)
   for (const c of midFree) {
     if (rng() < 0.03) tree(world, map, c.x, midTop + 1, c.z, rng)
-    else if (rng() < 0.1) world.set(c.x, midTop + 1, c.z, map.deco[Math.floor(rng() * map.deco.length)])
+    else if (rng() < (map.decoChance ?? 0.1)) world.set(c.x, midTop + 1, c.z, map.deco[Math.floor(rng() * map.deco.length)])
   }
 
   return { world, spawns, lucky, middle: { x: CENTER.x + 0.5, y: midTop + 1, z: CENTER.z + 0.5 } }

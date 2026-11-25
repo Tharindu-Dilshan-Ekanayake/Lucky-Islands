@@ -350,7 +350,7 @@ function VoteCards({ phase }) {
       )}
       {step(2, 'PICK THE MAP')}
       <div className="flex" style={{ gap: u(10) }}>
-        {MAP_IDS.map((id, i) => {
+        {(phase.mapOptions || MAP_IDS.slice(0, 3)).map((id, i) => {
           const mine = phase.myMapVote === id
           return (
             <button

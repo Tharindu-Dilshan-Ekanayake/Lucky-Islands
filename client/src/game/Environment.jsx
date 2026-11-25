@@ -40,6 +40,8 @@ import { worldState } from './world'
 const SKIES = {
   lobby: ['#3d9bff', '#8fd3ff', '#cdeeff'],
   meadow: ['#3b8cf0', '#86ccff', '#cbe9ff'],
+  castle: ['#4b3fae', '#a98be0', '#ffcfa6'],
+  ember: ['#2a0b1a', '#7a2236', '#ff8a4a'],
   frost: ['#5f8fd6', '#a9c8ef', '#eef5ff'],
   candy: ['#d56bd8', '#ffa3dc', '#ffe6f5'],
   desert: ['#4f9be8', '#ffc98a', '#fff0d9'],

@@ -254,13 +254,19 @@ test('the lobby votes on the mode first, then the map, and everyone holds a swor
   assert.equal(phase.chosenMode, 'teams2')
   host.message('a', 'vote', { mode: 'classic' })
   assert.equal(host.members.get('a').vote, 'teams2', 'no mode votes once the mode is chosen')
+  // Three different maps are on offer; one that isn't can't be voted for.
+  assert.equal(new Set(phase.mapOptions).size, 3)
+  const offMenu = MAP_IDS.find((id) => !phase.mapOptions.includes(id))
+  host.message('a', 'voteMap', { map: offMenu })
+  assert.equal(host.members.get('a').mapVote, null)
   // Both pick the map: the round starts straight away.
-  host.message('a', 'voteMap', { map: 'desert' })
-  host.message('b', 'voteMap', { map: 'desert' })
+  const pick = phase.mapOptions[1]
+  host.message('a', 'voteMap', { map: pick })
+  host.message('b', 'voteMap', { map: pick })
   host.message('b', 'voteMap', { map: 'nope' })
   advance(100)
   assert.equal(host.phase, 'cages')
-  assert.equal(host.match.mapId, 'desert')
+  assert.equal(host.match.mapId, pick)
   assert.equal(host.match.mode, 'teams2')
   assert.equal(host.aliveFighters().length, 8, 'empty islands filled with bots')
 })

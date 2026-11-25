@@ -91,6 +91,8 @@ export class GameHost {
     this.lockedBots = null
     this.match = null
     this.lastMap = null
+    /** The maps on offer this round (three, never the last one played). */
+    this.mapOptions = MAP_IDS.slice(0, 3)
     this.rosterDirty = true
     this.phaseDirty = true
     this.phaseSentAt = 0
@@ -219,7 +221,7 @@ export class GameHost {
         }
         return
       case 'voteMap':
-        if (MAP_IDS.includes(p.map) && this.phase === 'intermission' && this.voteStage === 'map') {
+        if (this.mapOptions.includes(p.map) && this.phase === 'intermission' && this.voteStage === 'map') {
           member.mapVote = p.map
           this.phaseDirty = true
         }
@@ -344,6 +346,8 @@ export class GameHost {
     this.lockedMode = this.pickMode()
     this.lockedBots = this.pickBotLevel()
     this.voteStage = 'map'
+    this.rollMapOptions()
+    for (const m of this.members.values()) m.mapVote = null
     this.stageEnds = this.now() + ROUND.mapVoteMs
     this.phaseEnds = this.stageEnds
     this.phaseDirty = true
@@ -380,16 +384,26 @@ export class GameHost {
     this.flush(dt, now)
   }
 
-  /** The most-voted map (ties broken at random); with no votes, any but the last one. */
+  /** The most-voted map on offer (ties broken at random); with no votes, any of them. */
   pickMap() {
     const counts = this.mapVoteCounts()
     const best = Math.max(0, ...Object.values(counts))
-    const pool = best ? MAP_IDS.filter((id) => counts[id] === best) : MAP_IDS.filter((id) => id !== this.lastMap)
+    const pool = best ? this.mapOptions.filter((id) => counts[id] === best) : this.mapOptions
     return pool[Math.floor(this.random() * pool.length)]
   }
 
+  /** Three different maps for the vote, leaving out the one just played. */
+  rollMapOptions() {
+    const pool = MAP_IDS.filter((id) => id !== this.lastMap)
+    for (let i = pool.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(this.random() * (i + 1))
+      ;[pool[i], pool[j]] = [pool[j], pool[i]]
+    }
+    this.mapOptions = pool.slice(0, 3)
+  }
+
   mapVoteCounts() {
-    const counts = Object.fromEntries(MAP_IDS.map((id) => [id, 0]))
+    const counts = Object.fromEntries(this.mapOptions.map((id) => [id, 0]))
     for (const m of this.members.values()) if (m.mapVote && counts[m.mapVote] !== undefined) counts[m.mapVote] += 1
     return counts
   }
@@ -1372,6 +1386,7 @@ export class GameHost {
       fighters: m?.fighters || 0,
       votes: this.voteCounts(),
       mapVotes: this.mapVoteCounts(),
+      mapOptions: this.mapOptions,
       voteStage: this.phase === 'intermission' ? this.voteStage : 'mode',
       stageLeft: this.phase === 'intermission' ? Math.max(0, this.stageEnds - now) : 0,
       chosenMode: this.lockedMode,
