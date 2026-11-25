@@ -13,6 +13,8 @@ import { lobbyLayout } from './world'
  */
 export function startGameTicker() {
   let lavaWarned = false
+  let lavaLessonAt = 0
+  let tutorialSent = false
   let lastCount = -1
   const id = setInterval(() => {
     const game = getGame()
@@ -33,10 +35,15 @@ export function startGameTicker() {
       game.setSpectating(r ? r.name || 'Player' : null)
     } else game.setSpectating(null)
 
-    // Tutorial: made it to the middle island.
-    if (game.tutorial === 2 && runtime.zone === 'match' && Math.hypot(b.x - CENTER.x, b.z - CENTER.z) < 11) {
-      game.setTutorial(3)
-      if (!game.profile.tutorial) actions.tutorialDone()
+    // Tutorial: made it to the middle island; then a hit; then the lava lesson.
+    if (game.tutorial === 2 && runtime.zone === 'match' && Math.hypot(b.x - CENTER.x, b.z - CENTER.z) < 11) game.setTutorial(3)
+    if (game.tutorial === 4) {
+      lavaLessonAt ||= performance.now()
+      if (performance.now() - lavaLessonAt > 9000 || (runtime.zone === 'match' && b.y > runtime.lava.y + 12 && runtime.lava.y > 6.3)) game.setTutorial(5)
+    }
+    if (game.tutorial >= 5 && !game.profile.tutorial && !tutorialSent) {
+      tutorialSent = true
+      actions.tutorialDone()
     }
 
     // The lava starts to climb: one rumble per round.

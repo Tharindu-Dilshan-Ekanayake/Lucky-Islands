@@ -437,11 +437,13 @@ function Objective() {
   let text = null
   let sub = null
   let hot = false
-  if (!tutorialSeen && step < 3 && phase.phase === 'fight') {
+  if (!tutorialSeen && step < 5 && phase.phase === 'fight') {
     const steps = [
-      ['1/3 BREAK A LUCKY BLOCK', touch ? 'Hold the pickaxe button while aiming at it' : 'Hold left click on it'],
-      ['2/3 HOLD YOUR BLOCKS', touch ? 'Tap the block slot in your hotbar' : 'Press the number of your block slot'],
-      ['3/3 BUILD TO THE MIDDLE ISLAND', touch ? 'Look past the edge - the white box shows where - tap PLACE' : 'Look past the edge - the white box shows where - right click'],
+      ['1/5 BREAK A LUCKY BLOCK', touch ? 'Hold the pickaxe button while aiming at it' : 'Hold left click on it'],
+      ['2/5 HOLD YOUR BLOCKS', touch ? 'Tap the block slot in your hotbar' : 'Press the number of your block slot'],
+      ['3/5 BUILD TO THE MIDDLE ISLAND', touch ? 'Look past the edge - the white box shows where - tap PLACE' : 'Look past the edge - the white box shows where - right click'],
+      ['4/5 HIT SOMEONE', touch ? 'Pick your best sword, aim at a player and tap HIT' : 'Pick your best sword, aim at a player and left click'],
+      ['5/5 THE LAVA WILL RISE', touch ? 'Stay high: look down, JUMP and PLACE to build a pillar' : 'Stay high: look down, jump and right click to build a pillar'],
     ]
     ;[text, sub] = steps[step]
   } else if (phase.phase === 'fight') {

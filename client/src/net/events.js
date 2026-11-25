@@ -161,6 +161,7 @@ export function handleServerEvent(type, p = {}) {
           if (p.by === runtime.eid) {
             sfx.hit()
             showHit(p.dmg)
+            if (game.tutorial === 3) game.setTutorial(4)
           } else sfx.hit(near(r.x, r.y, r.z) * 0.6)
         }
       }
