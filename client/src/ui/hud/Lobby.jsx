@@ -16,15 +16,15 @@ import GameIcon from '../GameIcon'
 
 /** The lobby HUD: the vote, server fill, the menu, wallet and case prompt, the welcome gift. */
 
-/** How full this server is (rounds always fill up to 8 with bots). */
+/** How many people are in this server (online only: offline there's nothing to say). */
 export function PlayerCount() {
   const net = useGame((s) => s.net)
-  let text = t('OFFLINE - PLAYING WITH BOTS')
-  if (net.mode === 'online') text = net.isPrivate ? t('PRIVATE ROOM {code} · {n}/{max} PLAYERS', { code: net.code || '', n: net.players, max: net.maxPlayers }) : t('{n}/{max} PLAYERS IN THIS SERVER', { n: net.players, max: net.maxPlayers })
+  if (net.mode !== 'online') return null
+  const text = net.isPrivate ? t('PRIVATE ROOM {code} · {n}/{max} PLAYERS', { code: net.code || '', n: net.players, max: net.maxPlayers }) : t('{n}/{max} PLAYERS', { n: net.players, max: net.maxPlayers })
   return (
     <div className="flex items-center" style={{ gap: u(10) }}>
       <span className="txt-o" style={{ fontSize: u(14), color: '#bfe8ff' }}>
-        {text} · {t('8 FIGHT EVERY ROUND')}
+        {text}
       </span>
       {net.mode === 'online' && net.isPrivate && (
         <Button className="pointer-events-auto" color="#3a6fd8" style={{ padding: `${u(2)} ${u(10)}`, fontSize: u(13) }} onClick={() => switchLobby({ mode: 'public' })}>
