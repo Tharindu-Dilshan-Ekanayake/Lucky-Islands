@@ -13,15 +13,27 @@ below rises through the round. Last one standing wins. Empty islands are filled 
 bots (unless the room votes for no bots), so a round has up to 8 fighters. Between
 rounds the room votes in two steps: first the mode (Solo free-for-all, 4 Teams 2v2v2v2,
 3 Teams 3v3v2, 2 Teams 4v4, Max Luck, Lava Rush) with the bots (none / Easy / Normal /
-Hard), then the map (with a picture of each) - and the round starts. Each step ends as
-soon as everyone has voted. Players who arrive mid-round can spectate or join it,
-taking over a bot (or a free island). In team modes players are dealt evenly across the
-teams; there is no friendly fire and the whole winning team wins. "Bots only" opens a
-private room of your own. Cases unlock capes and sword skins with the cash you earn.
+Hard), then the map: three of the six maps (Sunny Meadow, Frosty Peaks, Candy Clouds,
+Dune Isles, Sky Castle, Ember Isles) are offered each round, never the last one played -
+and the round starts. Each step ends as soon as everyone has voted. Players who arrive
+mid-round can spectate or join it, taking over a bot (or a free island). In team modes
+players are dealt evenly across the teams; there is no friendly fire and the whole
+winning team wins. "Bots only" opens a private room of your own. Cases unlock capes and
+sword skins with the cash you earn.
+
+Progression: rounds give XP (playing, kills, lucky blocks, placement, wins); every level
+pays cash and every fifth a free case. Three daily quests per player pay cash and XP the
+moment they're done. Levels show on name tags. Quick chat (T or the chat button) sends
+one of ten fixed lines to everyone in your zone, so guests and offline players can talk
+too; Boxity chat bubbles still show over names. The UI is in English or Sinhala
+(Settings → Language).
 
 The game runs in `shared/host.js` (rounds, rules, bots), the same code in the Colyseus
 room (`server/src/rooms/GameRoom.js`) and in the offline stand-in in the browser
-(`client/src/net/localServer.js`). Player saves are `shared/logic.js` profiles.
+(`client/src/net/localServer.js`). Player saves are `shared/logic.js` profiles. The host
+checks every reported position (`shared/movecheck.js`: speed budget, flying, walking
+through walls) and puts cheaters back; reach, attack speed and dig time were already
+checked. `npm run loadtest` in `server/` drives fake players against a local server.
 
 ## Leaderboards
 
